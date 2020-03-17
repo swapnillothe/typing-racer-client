@@ -10,7 +10,7 @@
   [:div
    [:h1 "Hello World!"]])
 
-(go (let [response (<! (http/get "http://localhost:9002/"))]
+(go (let [response (<! (http/get "http://localhost:9002/" {:with-credentials? false}))]
       (prn (:status response))
       (prn (map :login (:body response)))))
 

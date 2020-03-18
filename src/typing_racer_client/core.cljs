@@ -14,7 +14,7 @@
 (go (let [response (<! (http/get "http://localhost:9002/paragraph" {:with-credentials? false}))]
       (mount-element "main"
                      [:div
-                    [:div {:style #js {:background "aqua"}} [:p (:body response)]]
+                    [:div {:class "paragraph"} [:p (:body response)]]
                     [:div [:input]]])))
 
 (mount-element "app" title)

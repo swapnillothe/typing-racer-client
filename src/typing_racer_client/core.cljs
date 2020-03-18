@@ -6,17 +6,17 @@
     [cljs-http.client :as http]
     [cljs.core.async :refer [<!]]))
 
-(defn hello-world []
-  [:div
-   [:h1 "Hello World!"]])
+(def title [:div [:h1 "Typing racer"] [:div {:id "main"}]])
 
-(go (let [response (<! (http/get "http://localhost:9002/" {:with-credentials? false}))]
-      (prn (:status response))
-      (prn (map :login (:body response)))))
+(defn mount-element [id body]
+  (reagent/render-component [(fn [] body)] (gdom/getElement id)))
 
-(defn mount-app-element []
-  (reagent/render-component [hello-world] (gdom/getElement "app")))
+(go (let [response (<! (http/get "http://localhost:9002/paragraph" {:with-credentials? false}))]
+      (mount-element "main"
+                     [:div
+                    [:div {:style #js {:background "aqua"}} [:p (:body response)]]
+                    [:div [:input]]])))
 
-(mount-app-element)
+(mount-element "app" title)
 
-(defn ^:after-load on-reload [] (mount-app-element))
+(defn ^:after-load on-reload [] (mount-element "app" title))

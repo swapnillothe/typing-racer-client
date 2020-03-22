@@ -2,7 +2,7 @@
   :description "FIXME: write this!"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+            :url  "http://www.eclipse.org/legal/epl-v10.html"}
 
   :min-lein-version "2.7.1"
 
@@ -19,6 +19,5 @@
             "fig:test"  ["run" "-m" "figwheel.main" "-co" "test.cljs.edn" "-m" "typing-racer-client.test-runner"]}
 
   :profiles {:dev {:dependencies [[com.bhauman/figwheel-main "0.2.3"]
-                                  [com.bhauman/rebel-readline-cljs "0.1.4"]]
-                   }})
+                                  [com.bhauman/rebel-readline-cljs "0.1.4"]]}})
 

@@ -28,15 +28,34 @@
   [:div [:input {:type     "text" :value @typed-text
                  :onChange #(reset! typed-text (.-value (.-target %)))}]])
 
-(go (let [response (<! (http/get "http://localhost:9002/paragraph" {:with-credentials? false}))]
-      (mount-element "main"
-                     (let [typed-text (atom "")]
-                       [:div
-                        [:div {:class "paragraph"} [:p (:body response)]]
-                        [typing-area typed-text]
-                        [:button {:onClick start-race} "start"]
-                        [:button {:onClick #(end-race @typed-text)} "end"]]))))
+(defn show-race []
+  (go (let [response (<! (http/get "http://localhost:9002/paragraph" {:with-credentials? false}))]
+        (mount-element "main"
+                       (let [typed-text (atom "")]
+                         [:div
+                          [:div {:class "paragraph"} [:p (:body response)]]
+                          [typing-area typed-text]
+                          [:button {:onClick start-race} "start"]
+                          [:button {:onClick #(end-race @typed-text)} "end"]])))))
 
-(mount-element "app" title)
+(defn set-cookie [cookie]
+  (-> js/document
+      (.-cookie)
+      (set! cookie)))
 
-(defn ^:after-load on-reload [] (mount-element "app" title))
+
+(defn host-game []
+  (go (let [response (<! (http/post "http://localhost:9002/host" {:with-credentials? false}))]
+        (doall (map set-cookie (.parse js/JSON (:body response))))
+        (show-race))))
+
+(defn main []
+  (mount-element "app" title)
+  (mount-element "main"
+                 [:div
+                  [:button {:onClick host-game} "Host"]
+                  [:button "Join"]]))
+
+(main)
+
+(defn ^:after-load on-reload [] (main))

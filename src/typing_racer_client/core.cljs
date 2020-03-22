@@ -28,26 +28,29 @@
   [:div [:input {:type     "text" :value @typed-text
                  :onChange #(reset! typed-text (.-value (.-target %)))}]])
 
-(defn show-race []
-  (go (let [response (<! (http/get "http://localhost:9002/paragraph" {:with-credentials? false}))]
-        (mount-element "main"
-                       (let [typed-text (atom "")]
-                         [:div
-                          [:div {:class "paragraph"} [:p (:body response)]]
-                          [typing-area typed-text]
-                          [:button {:onClick start-race} "start"]
-                          [:button {:onClick #(end-race @typed-text)} "end"]])))))
+(defn show-race [para game-id]
+  (mount-element "main"
+                 (let [typed-text (atom "")]
+                   [:div
+                    [:h3 (str "Race Id : " game-id)]
+                    [:div {:class "paragraph"} [:p para]]
+                    [typing-area typed-text]
+                    [:button {:onClick start-race} "start"]
+                    [:button {:onClick #(end-race @typed-text)} "end"]])))
 
 (defn set-cookie [cookie]
   (-> js/document
       (.-cookie)
       (set! cookie)))
 
+(defn parse-body [res]
+  (js->clj (.parse js/JSON (:body res))))
 
 (defn host-game []
   (go (let [response (<! (http/post "http://localhost:9002/host" {:with-credentials? false}))]
-        (doall (map set-cookie (.parse js/JSON (:body response))))
-        (show-race))))
+        (set-cookie (str "player-id=" ((parse-body response) "player-id")))
+        (set-cookie (str "race-id=" ((parse-body response) "race-id")))
+        (show-race ((parse-body response) "paragraph") ((parse-body response) "race-id")))))
 
 (defn main []
   (mount-element "app" title)

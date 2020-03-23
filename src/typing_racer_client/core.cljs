@@ -54,7 +54,7 @@
 
 (defn waiting-component []
   (when @is-waiting
-    [:div "Waiting for other players to join..."]))
+    [:div {:class ["waiting"]} "Waiting for other players to join..."]))
 
 (defn join-race
   [name race-id]

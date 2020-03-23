@@ -1,7 +1,8 @@
 /* some style */
 
 body {
-    background-color: #18b0b0;
+    margin: 0;
+    background: #ecfbfc;
 }
 
 #app {
@@ -9,7 +10,7 @@ body {
 }
 
 .container {
-    height: 95%;
+    height: 90%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -20,18 +21,36 @@ body {
     font-family: "Montserrat";
     color: white;
     font-weight: 700;
-    height: 5%;
+    height: 6%;
     margin: 0;
+    background: linear-gradient(90deg, rgba(2,0,36,1) 0%, rgba(0,0,0,1) 7%, rgba(0,212,255,1) 100%);
 }
 
+.waiting {
+    width: 500px;
+    height: 80px;
+
+    border-radius: 10px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    align-items: center;
+    font-size: 30px;
+    font-family: "Montserrat";
+    color: white;
+    font-weight: 700;
+    background: #0f4c81;
+}
 
 .player-detail {
     height: 30%;
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
+    justify-content: space-evenly;
     align-items: center;
-
+    background: #0f4c81;
+    border-radius: 10px;
 }
 
 .player-detail input {
@@ -52,9 +71,9 @@ body {
 .btn {
     width: 150px;
     height: 35px;
-    background: white;
+    background: #084177;
     border: 0px;
-    color: #084f8e;
+    color: white;
     line-height: 1.3333333;
     border-radius: 6px;
     font-size: 20px;

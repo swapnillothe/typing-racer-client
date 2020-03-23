@@ -2,31 +2,31 @@
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
     [goog.dom :as gdom]
-    [reagent.core :as reagent :refer [atom]]
+    [reagent.core :as r]
     [clojure.string :as str]
     [cljs-http.client :as http]
     [cljs.core.async :refer [<!]]))
 
-(def title [:div [:h1 "Typing racer"] [:div {:id "main"}]])
+(def is-waiting (r/atom false))
 
 (defn mount-element [id body]
-  (reagent/render-component [(fn [] body)] (gdom/getElement id)))
+  (r/render-component [(fn [] body)] (gdom/getElement id)))
 
-(defn start-race []
-  (http/post "http://localhost:9002/start-race" {:with-credentials? false}))
+(defn title [] [:h1 "Typing racer"])
+
+(defn start-race [] (http/post "http://localhost:9002/start-race" {:with-credentials? false}))
 
 (defn end-race [typed-text]
   (http/post "http://localhost:9002/end-race"
-             {:with-credentials? false
-              :form-params       {:words-count (if
-                                                 (= 0 (count typed-text))
-                                                 0
-                                                 (count (str/split typed-text #" ")))}}))
+		   {:with-credentials? false
+		    :form-params       {:words-count (if (= 0 (count typed-text))
+									    0
+									    (count (str/split typed-text #" ")))}}))
 
 (defn typing-area
   [typed-text]
   [:div [:input {:type     "text" :value @typed-text
-                 :onChange #(reset! typed-text (.-value (.-target %)))}]])
+			  :onChange #(reset! typed-text (.-value (.-target %)))}]])
 
 (defn show-race [para game-id]
   (mount-element "main"
@@ -52,12 +52,46 @@
         (set-cookie (str "race-id=" ((parse-body response) "race-id")))
         (show-race ((parse-body response) "paragraph") ((parse-body response) "race-id")))))
 
+(defn waiting-component
+  []
+  (when @is-waiting
+    [:div "Waiting for other players to join..."]))
+
+(defn join-race
+  [name race-id]
+  (go
+    (let [_ (<! (http/post "http://localhost:9002/join-race"
+					  {:with-credentials? false
+					   :form-params       {:name name :race-id race-id}}))]
+	 (reset! is-waiting true))))
+
+(defn join-race-details
+  []
+  (let [name (r/atom "") race-id (r/atom "")]
+    (fn [] (when (not @is-waiting)
+		   [:div
+		    [:label "Name"]
+		    [:input {:type "text" :onChange #(reset! name (.-value (.-target %)))}]
+		    [:label "Race Id"]
+		    [:input {:type "text" :onChange #(reset! race-id (.-value (.-target %)))}]
+		    [:button {:onClick #(join-race @name @race-id)} "Submit"]
+		    [:div {:id "waiting-component"}]]))))
+
+(defn join-race-component []
+  (let [clicked (r/atom false)]
+    (fn []
+	 (if (not @clicked)
+	   [:div
+	    [:button
+		{:onClick #(reset! clicked true)}
+		"Join Race"]]
+	   join-race-details))))
+
 (defn main []
-  (mount-element "app" title)
-  (mount-element "main"
-                 [:div
-                  [:button {:onClick host-game} "Host"]
-                  [:button "Join"]]))
+  (mount-element "app"
+			  [:div
+			   [:button {:onClick host-game} "Host"]])
+  (mount-element "app" [:<> [title] [join-race-component] [waiting-component]]))
 
 (main)
 

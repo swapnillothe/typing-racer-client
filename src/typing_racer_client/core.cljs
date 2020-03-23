@@ -12,7 +12,7 @@
 (defn mount-element [id body]
   (r/render-component [(fn [] body)] (gdom/getElement id)))
 
-(defn title [] [:h1 "Typing racer"])
+(defn title [] [:div {:class ["heading"]} "Typing racer"])
 
 (defn start-race [] (http/post "http://localhost:9002/start-race" {:with-credentials? false}))
 
@@ -52,8 +52,7 @@
         (set-cookie (str "race-id=" ((parse-body response) "race-id")))
         (show-race ((parse-body response) "paragraph") ((parse-body response) "race-id")))))
 
-(defn waiting-component
-  []
+(defn waiting-component []
   (when @is-waiting
     [:div "Waiting for other players to join..."]))
 
@@ -69,29 +68,28 @@
   []
   (let [name (r/atom "") race-id (r/atom "")]
     (fn [] (when (not @is-waiting)
-		   [:div
-		    [:label "Name"]
-		    [:input {:type "text" :onChange #(reset! name (.-value (.-target %)))}]
-		    [:label "Race Id"]
-		    [:input {:type "text" :onChange #(reset! race-id (.-value (.-target %)))}]
-		    [:button {:onClick #(join-race @name @race-id)} "Submit"]
+		   [:div {:class ["player-detail"]}
+		    [:input {:type "text" :placeholder "Name" :onChange #(reset! name (.-value (.-target %)))}]
+		    [:input {:type "text" :placeholder "Race Id" :onChange #(reset! race-id (.-value (.-target %)))}]
+		    [:button { :class ["btn"] :onClick #(join-race @name @race-id)} "Submit"]
 		    [:div {:id "waiting-component"}]]))))
 
 (defn join-race-component []
   (let [clicked (r/atom false)]
     (fn []
 	 (if (not @clicked)
-	   [:div
 	    [:button
-		{:onClick #(reset! clicked true)}
-		"Join Race"]]
+		{:class ["btn"] :onClick #(reset! clicked true)}
+		"Join Race"]
 	   join-race-details))))
 
 (defn main []
   (mount-element "app"
 			  [:div
 			   [:button {:onClick host-game} "Host"]])
-  (mount-element "app" [:<> [title] [join-race-component] [waiting-component]]))
+  (mount-element "app" [:<>
+				    [title]
+				    [:div {:class ["container"]} [join-race-component] [waiting-component]]]))
 
 (main)
 

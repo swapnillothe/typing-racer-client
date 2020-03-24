@@ -29,7 +29,7 @@
 			  :onChange #(reset! typed-text (.-value (.-target %)))}]])
 
 (defn show-race [para game-id]
-  (mount-element "main"
+  (mount-element "container"
                  (let [typed-text (atom "")]
                    [:div
                     [:h3 (str "Race Id : " game-id)]
@@ -78,18 +78,20 @@
   (let [clicked (r/atom false)]
     (fn []
 	 (if (not @clicked)
-	    [:button
+	    [:<>
+		[:button
 		{:class ["btn"] :onClick #(reset! clicked true)}
 		"Join Race"]
+		[:button
+		 {:class ["btn"] :onClick host-game} "Host Race"]]
 	   join-race-details))))
 
 (defn main []
-  (mount-element "app"
-			  [:div
-			   [:button {:onClick host-game} "Host"]])
   (mount-element "app" [:<>
 				    [title]
-				    [:div {:class ["container"]} [join-race-component] [waiting-component]]]))
+				    [:div {:id "container"
+						 :class ["container"]} [join-race-component] [waiting-component]]
+				    [:div [:button {:onClick host-game} "Host"]]]))
 
 (main)
 

@@ -90,8 +90,7 @@
   (mount-element "app" [:<>
 				    [title]
 				    [:div {:id "container"
-						 :class ["container"]} [join-race-component] [waiting-component]]
-				    [:div [:button {:onClick host-game} "Host"]]]))
+						 :class ["container"]} [join-race-component] [waiting-component]]]))
 
 (main)
 

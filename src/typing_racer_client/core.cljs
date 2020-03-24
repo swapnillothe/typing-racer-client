@@ -61,8 +61,8 @@
           (js/setTimeout (fn [] (prn "All players joined")) 1000)
           (mount-element "container" [waiting-for-others race-id])))))
 
-(defn host-game []
-  (go (let [response (<! (http/post "http://localhost:9002/host" {:with-credentials? false}))
+(defn host-game [host]
+  (go (let [response (<! (http/post (str "http://localhost:9002/host?host=" host) {:with-credentials? false}))
             player-id ((parse-body response) "player-id")
             race-id ((parse-body response) "race-id")]
         (set-cookie (str "player-id=" player-id))
@@ -87,11 +87,12 @@
        [:div {:id "waiting-component"}]])))
 
 (defn host-page []
-  (mount-element
-    "container"
-    [:div {:class ["player-detail"]}
-     [:input {:type "text" :placeholder "Name"}]
-     [:button {:class ["btn"] :onClick host-game} "Submit"]]))
+  (let [name (r/atom "")]
+    (mount-element
+      "container"
+      [:div {:class ["player-detail"]}
+       [:input {:type "text" :placeholder "Name" :onChange #(reset! name (.-value (.-target %)))}]
+       [:button {:class ["btn"] :onClick #(host-game @name)} "Submit"]])))
 
 (defn join-race-component []
   [:div {:class ["player-detail"]}

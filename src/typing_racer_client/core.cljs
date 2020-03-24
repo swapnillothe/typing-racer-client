@@ -18,15 +18,15 @@
 
 (defn end-race [typed-text]
   (http/post "http://localhost:9002/end-race"
-		   {:with-credentials? false
-		    :form-params       {:words-count (if (= 0 (count typed-text))
-									    0
-									    (count (str/split typed-text #" ")))}}))
+             {:with-credentials? false
+              :form-params       {:words-count (if (= 0 (count typed-text))
+                                                 0
+                                                 (count (str/split typed-text #" ")))}}))
 
 (defn typing-area
   [typed-text]
   [:div [:input {:type     "text" :value @typed-text
-			  :onChange #(reset! typed-text (.-value (.-target %)))}]])
+                 :onChange #(reset! typed-text (.-value (.-target %)))}]])
 
 (defn show-race [para game-id]
   (mount-element "container"
@@ -60,37 +60,34 @@
   [name race-id]
   (go
     (let [_ (<! (http/post "http://localhost:9002/join-race"
-					  {:with-credentials? false
-					   :form-params       {:name name :race-id race-id}}))]
-	 (reset! is-waiting true))))
+                           {:with-credentials? false
+                            :form-params       {:name name :race-id race-id}}))]
+      (reset! is-waiting true))))
 
 (defn join-race-details
   []
   (let [name (r/atom "") race-id (r/atom "")]
     (fn [] (when (not @is-waiting)
-		   [:div {:class ["player-detail"]}
-		    [:input {:type "text" :placeholder "Name" :onChange #(reset! name (.-value (.-target %)))}]
-		    [:input {:type "text" :placeholder "Race Id" :onChange #(reset! race-id (.-value (.-target %)))}]
-		    [:button { :class ["btn"] :onClick #(join-race @name @race-id)} "Submit"]
-		    [:div {:id "waiting-component"}]]))))
+             [:div {:class ["player-detail"]}
+              [:input {:type "text" :placeholder "Name" :onChange #(reset! name (.-value (.-target %)))}]
+              [:input {:type "text" :placeholder "Race Id" :onChange #(reset! race-id (.-value (.-target %)))}]
+              [:button {:class ["btn"] :onClick #(join-race @name @race-id)} "Submit"]
+              [:div {:id "waiting-component"}]]))))
 
 (defn join-race-component []
   (let [clicked (r/atom false)]
     (fn []
-	 (if (not @clicked)
-	    [:div {:class ["player-detail"]}
-		[:button
-		{:class ["btn"] :onClick #(reset! clicked true)}
-		"Join Race"]
-		[:button
-		 {:class ["btn"] :onClick host-game} "Host Race"]]
-	   join-race-details))))
+      (if (not @clicked)
+        [:div {:class ["player-detail"]}
+         [:button {:class ["btn"] :onClick host-game} "Host Race"]
+         [:button {:class ["btn"] :onClick #(reset! clicked true)} "Join Race"]]
+        join-race-details))))
 
 (defn main []
-  (mount-element "app" [:<>
-				    [title]
-				    [:div {:id "container"
-						 :class ["container"]} [join-race-component] [waiting-component]]]))
+  (mount-element "app"
+                 [:<> [title]
+                  [:div {:id "container" :class ["container"]}
+                   [join-race-component] [waiting-component]]]))
 
 (main)
 

@@ -78,7 +78,7 @@
   (let [clicked (r/atom false)]
     (fn []
 	 (if (not @clicked)
-	    [:<>
+	    [:div {:class ["player-detail"]}
 		[:button
 		{:class ["btn"] :onClick #(reset! clicked true)}
 		"Join Race"]

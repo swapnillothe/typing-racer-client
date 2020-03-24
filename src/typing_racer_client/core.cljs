@@ -46,48 +46,64 @@
 (defn parse-body [res]
   (js->clj (.parse js/JSON (:body res))))
 
-(defn host-game []
-  (go (let [response (<! (http/post "http://localhost:9002/host" {:with-credentials? false}))]
-        (set-cookie (str "player-id=" ((parse-body response) "player-id")))
-        (set-cookie (str "race-id=" ((parse-body response) "race-id")))
-        (show-race ((parse-body response) "paragraph") ((parse-body response) "race-id")))))
-
 (defn waiting-component []
   (when @is-waiting
     [:div {:class ["waiting"]} "Waiting for other players to join..."]))
 
+(defn waiting-for-others [race-id]
+  [:div
+   [:div {:class ["waiting"]} "Waiting for other players to join..."]
+   [:div {:class ["waiting"]} (str "Race Id ->  " race-id)]])
+
+(defn wait-for-join [race-id]
+  (go (let [response (<! (http/get (str "http://localhost:9002/race?race-id=" race-id) {:with-credentials? false}))]
+        (if (= 2 (count ((parse-body response) "players")))
+          (js/setTimeout (fn [] (prn "All players joined")) 1000)
+          (mount-element "container" [waiting-for-others race-id])))))
+
+(defn host-game []
+  (go (let [response (<! (http/post "http://localhost:9002/host" {:with-credentials? false}))
+            player-id ((parse-body response) "player-id")
+            race-id ((parse-body response) "race-id")]
+        (set-cookie (str "player-id=" player-id))
+        (set-cookie (str "race-id=" race-id))
+        (wait-for-join race-id))))
+
 (defn join-race
   [name race-id]
-  (go
-    (let [_ (<! (http/post "http://localhost:9002/join-race"
-                           {:with-credentials? false
-                            :form-params       {:name name :race-id race-id}}))]
-      (reset! is-waiting true))))
+  (go (let [_ (<! (http/post "http://localhost:9002/join-race"
+                             {:with-credentials? false
+                              :form-params       {:name name :race-id race-id}}))]
+        (reset! is-waiting true))))
 
-(defn join-race-details
-  []
+(defn join-race-details []
   (let [name (r/atom "") race-id (r/atom "")]
-    (fn [] (when (not @is-waiting)
-             [:div {:class ["player-detail"]}
-              [:input {:type "text" :placeholder "Name" :onChange #(reset! name (.-value (.-target %)))}]
-              [:input {:type "text" :placeholder "Race Id" :onChange #(reset! race-id (.-value (.-target %)))}]
-              [:button {:class ["btn"] :onClick #(join-race @name @race-id)} "Submit"]
-              [:div {:id "waiting-component"}]]))))
+    (mount-element
+      "container"
+      [:div {:class ["player-detail"]}
+       [:input {:type "text" :placeholder "Name" :onChange #(reset! name (.-value (.-target %)))}]
+       [:input {:type "text" :placeholder "Race Id" :onChange #(reset! race-id (.-value (.-target %)))}]
+       [:button {:class ["btn"] :onClick #(join-race @name @race-id)} "Submit"]
+       [:div {:id "waiting-component"}]])))
+
+(defn host-page []
+  (mount-element
+    "container"
+    [:div {:class ["player-detail"]}
+     [:input {:type "text" :placeholder "Name"}]
+     [:button {:class ["btn"] :onClick host-game} "Submit"]]))
 
 (defn join-race-component []
-  (let [clicked (r/atom false)]
-    (fn []
-      (if (not @clicked)
-        [:div {:class ["player-detail"]}
-         [:button {:class ["btn"] :onClick host-game} "Host Race"]
-         [:button {:class ["btn"] :onClick #(reset! clicked true)} "Join Race"]]
-        join-race-details))))
+  [:div {:class ["player-detail"]}
+   [:button {:class ["btn"] :onClick host-page} "Host Race"]
+   [:button {:class ["btn"] :onClick join-race-details} "Join Race"]])
 
 (defn main []
-  (mount-element "app"
-                 [:<> [title]
-                  [:div {:id "container" :class ["container"]}
-                   [join-race-component] [waiting-component]]]))
+  (mount-element
+    "app"
+    [:<> [title]
+     [:div {:id "container" :class ["container"]}
+      [join-race-component] [waiting-component]]]))
 
 (main)
 

@@ -50,7 +50,7 @@
   (when @is-waiting
     [:div {:class ["waiting"]} "Waiting for other players to join..."]))
 
-(defn waiting-for-others [race-id]
+(defn waiting-page [race-id]
   [:div
    [:div {:class ["waiting"]} "Waiting for other players to join..."]
    [:div {:class ["waiting"]} (str "Race Id ->  " race-id)]])
@@ -58,8 +58,8 @@
 (defn wait-for-join [race-id]
   (go (let [response (<! (http/get (str "http://localhost:9002/race?race-id=" race-id) {:with-credentials? false}))]
         (if (= 2 (count ((parse-body response) "players")))
-          (js/setTimeout (fn [] (prn "All players joined")) 1000)
-          (mount-element "container" [waiting-for-others race-id])))))
+          (show-race ((parse-body response) "paragraph") race-id)
+          (js/setTimeout #(wait-for-join race-id) 1000)))))
 
 (defn host-game [host]
   (go (let [response (<! (http/post (str "http://localhost:9002/host?host=" host) {:with-credentials? false}))
@@ -67,14 +67,18 @@
             race-id ((parse-body response) "race-id")]
         (set-cookie (str "player-id=" player-id))
         (set-cookie (str "race-id=" race-id))
+        (mount-element "container" (waiting-page race-id))
         (wait-for-join race-id))))
 
 (defn join-race
   [name race-id]
-  (go (let [_ (<! (http/post "http://localhost:9002/join-race"
-                             {:with-credentials? false
-                              :form-params       {:name name :race-id race-id}}))]
-        (reset! is-waiting true))))
+  (go (let [response (<! (http/post "http://localhost:9002/join-race"
+                                    {:with-credentials? false
+                                     :form-params       {:name name :race-id race-id}}))
+            parsed-body (parse-body response)
+            race-id (parsed-body "race-id")
+            para (parsed-body "paragraph")]
+        (show-race para race-id))))
 
 (defn join-race-details []
   (let [name (r/atom "") race-id (r/atom "")]

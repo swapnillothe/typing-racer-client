@@ -9,6 +9,15 @@
 
 (def is-waiting (r/atom false))
 
+
+(defn set-cookie [cookie]
+  (-> js/document
+      (.-cookie)
+      (set! cookie)))
+
+(defn parse-body [res]
+  (js->clj (.parse js/JSON (:body res))))
+
 (defn mount-element [id body]
   (r/render-component [(fn [] body)] (gdom/getElement id)))
 
@@ -24,27 +33,29 @@
                                                  (count (str/split typed-text #" ")))}}))
 
 (defn typing-area
-  [typed-text]
-  [:div [:input {:type     "text" :value @typed-text
-                 :onChange #(reset! typed-text (.-value (.-target %)))}]])
+  [name]
+  [:div [:input {:type "text" :onChange #(reset! name (.-value (.-target %)))}]])
 
-(defn show-race [para game-id]
-  (mount-element "container"
-                 (let [typed-text (atom "")]
-                   [:div
-                    [:h3 (str "Race Id : " game-id)]
-                    [:div {:class "paragraph"} [:p para]]
-                    [typing-area typed-text]
-                    [:button {:onClick start-race} "start"]
-                    [:button {:onClick #(end-race @typed-text)} "end"]])))
+(defn players-component [players]
+  [:div {:class "joined-player"}
+   [:ul "Joined players"
+    (for [player players]
+      [:li (player "name")])]])
 
-(defn set-cookie [cookie]
-  (-> js/document
-      (.-cookie)
-      (set! cookie)))
-
-(defn parse-body [res]
-  (js->clj (.parse js/JSON (:body res))))
+(defn show-race [race-id]
+  (go (let [response (<! (http/get (str "http://localhost:9002/race?race-id=" race-id) {:with-credentials? false}))
+            parsed-body (parse-body response)
+            para (parsed-body "paragraph")
+            players (parsed-body "players")]
+        (mount-element "container"
+                       (let [typed-text (atom "")]
+                         [:div
+                          [:h3 (str "Race Id : " race-id)]
+                          [:div {:class "paragraph"} [:p para]]
+                          [players-component players]
+                          [typing-area typed-text]
+                          [:button {:onClick start-race} "start"]
+                          [:button {:onClick #(end-race @typed-text)} "end"]])))))
 
 (defn waiting-component []
   (when @is-waiting
@@ -57,8 +68,8 @@
 
 (defn wait-for-join [race-id]
   (go (let [response (<! (http/get (str "http://localhost:9002/race?race-id=" race-id) {:with-credentials? false}))]
-        (if (= 2 (count ((parse-body response) "players")))
-          (show-race ((parse-body response) "paragraph") race-id)
+        (if (= 1 (count ((parse-body response) "players")))
+          (show-race race-id)
           (js/setTimeout #(wait-for-join race-id) 1000)))))
 
 (defn host-game [host]
@@ -76,9 +87,8 @@
                                     {:with-credentials? false
                                      :form-params       {:name name :race-id race-id}}))
             parsed-body (parse-body response)
-            race-id (parsed-body "race-id")
-            para (parsed-body "paragraph")]
-        (show-race para race-id))))
+            race-id (parsed-body "race-id")]
+        (show-race race-id))))
 
 (defn join-race-details []
   (let [name (r/atom "") race-id (r/atom "")]

@@ -7,9 +7,6 @@
     [cljs-http.client :as http]
     [cljs.core.async :refer [<!]]))
 
-(def is-waiting (r/atom false))
-
-
 (defn set-cookie [cookie]
   (-> js/document
       (.-cookie)
@@ -73,10 +70,6 @@
                         [:button {:onClick #(end-race @typed-text)} "end"]])
         (typing-area typed-text))))
 
-(defn waiting-component []
-  (when @is-waiting
-    [:div {:class ["waiting"]} "Waiting for other players to join..."]))
-
 (defn waiting-page [race-id]
   [:div
    [:div {:class ["waiting"]} "Waiting for other players to join..."]
@@ -134,7 +127,7 @@
     "app"
     [:<> [title]
      [:div {:id "container" :class ["container"]}
-      [join-race-component] [waiting-component]]]))
+      [join-race-component]]]))
 
 (main)
 

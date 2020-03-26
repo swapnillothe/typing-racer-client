@@ -32,9 +32,24 @@
                                                  0
                                                  (count (str/split typed-text #" ")))}}))
 
+(defn mount-empty-input [id]
+  (mount-element id [:div [:input {:type "text" :value ""}]]))
+
+(defn input-component
+  ([side-effect-atom] (input-component side-effect-atom {}))
+  ([side-effect-atom props]
+   [:input (merge {:type     "text"
+                   :onChange #(reset! side-effect-atom (.-value (.-target %)))} props)]))
+
+
 (defn typing-area
-  [name]
-  [:div [:input {:type "text" :onChange #(reset! name (.-value (.-target %)))}]])
+  ([text] (mount-empty-input "typing-area") (typing-area text 10))
+  ([text time-to-start]
+   (if (zero? time-to-start)
+     (mount-element
+       "typing-area"
+       [:div [input-component text]])
+     (js/setTimeout #(typing-area text (dec time-to-start)) 1000))))
 
 (defn players-component [players]
   [:div {:class "joined-player"}
@@ -46,16 +61,17 @@
   (go (let [response (<! (http/get (str "http://localhost:9002/race?race-id=" race-id) {:with-credentials? false}))
             parsed-body (parse-body response)
             para (parsed-body "paragraph")
-            players (parsed-body "players")]
+            players (parsed-body "players")
+            typed-text (atom "")]
         (mount-element "container"
-                       (let [typed-text (atom "")]
-                         [:div
-                          [:h3 (str "Race Id : " race-id)]
-                          [:div {:class "paragraph"} [:p para]]
-                          [players-component players]
-                          [typing-area typed-text]
-                          [:button {:onClick start-race} "start"]
-                          [:button {:onClick #(end-race @typed-text)} "end"]])))))
+                       [:div
+                        [:h3 (str "Race Id : " race-id)]
+                        [:div {:class "paragraph"} [:p para]]
+                        [players-component players]
+                        [:div {:id "typing-area"}]
+                        [:button {:onClick start-race} "start"]
+                        [:button {:onClick #(end-race @typed-text)} "end"]])
+        (typing-area typed-text))))
 
 (defn waiting-component []
   (when @is-waiting
@@ -95,8 +111,8 @@
     (mount-element
       "container"
       [:div {:class ["player-detail"]}
-       [:input {:type "text" :placeholder "Name" :onChange #(reset! name (.-value (.-target %)))}]
-       [:input {:type "text" :placeholder "Race Id" :onChange #(reset! race-id (.-value (.-target %)))}]
+       [input-component name {:placeholder "Name"}]
+       [input-component race-id {:placeholder "Race Id"}]
        [:button {:class ["btn"] :onClick #(join-race @name @race-id)} "Submit"]
        [:div {:id "waiting-component"}]])))
 
@@ -105,7 +121,7 @@
     (mount-element
       "container"
       [:div {:class ["player-detail"]}
-       [:input {:type "text" :placeholder "Name" :onChange #(reset! name (.-value (.-target %)))}]
+       [input-component name {:placeholder "Name"}]
        [:button {:class ["btn"] :onClick #(host-game @name)} "Submit"]])))
 
 (defn join-race-component []

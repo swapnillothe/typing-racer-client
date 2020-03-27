@@ -10,8 +10,7 @@
 (def host "localhost")
 (def port 9002)
 
-(defn create-link [route]
-  (str "http://" host ":" port route))
+(defn create-link [route] (str "http://" host ":" port route))
 
 ; If new method comes add here.
 (defn request
@@ -32,10 +31,6 @@
 (defn mount-element [id body]
   (r/render-component [(fn [] body)] (gdom/getElement id)))
 
-(defn title [] [:div {:class ["heading"]} "Typing racer"])
-
-(defn start-race [] (request :post "/start-race"))
-
 (defn calculate-words [text]
   (count (str/split text #" ")))
 
@@ -52,15 +47,19 @@
    [:input (merge {:type     "text"
                    :onChange #(reset! side-effect-atom (.-value (.-target %)))} props)]))
 
+(defn show-remaining-time [time]
+  (mount-element
+    "remaining-time"
+    (str "Remaining time : " (dec time) " Secs")))
 
 (defn typing-area
   ([text] (mount-empty-input "typing-area") (typing-area text 10))
   ([text time-to-start]
    (if (zero? time-to-start)
-     (mount-element
-       "typing-area"
-       [:div [input-component text]])
-     (js/setTimeout #(typing-area text (dec time-to-start)) 1000))))
+     (mount-element "typing-area" [:div [input-component text]])
+     (js/setTimeout
+       #(do (typing-area text (dec time-to-start))
+            (show-remaining-time time-to-start)) 1000))))
 
 (defn players-component [players]
   [:div {:class "joined-player"}
@@ -68,26 +67,32 @@
     (for [player players]
       [:li {:key (player "name")} (player "name")])]])
 
+(defn race-component [race-id para players typed-text]
+  (mount-element "container"
+                 [:div
+                  [:h3 (str "Race Id : " race-id)]
+                  [:div {:id "remaining-time"}]
+                  [:div {:class "paragraph"} [:p para]]
+                  [players-component players]
+                  [:div {:id "typing-area"}]
+                  [:button {:onClick #(request :post "/start-race")} "start"]
+                  [:button {:onClick #(end-race @typed-text)} "end"]]))
+
 (defn show-race [race-id]
   (go (let [response (<! (request :get (str "/race?race-id=" race-id)))
             parsed-body (parse-body response)
             para (parsed-body "paragraph")
             players (parsed-body "players")
             typed-text (atom "")]
-        (mount-element "container"
-                       [:div
-                        [:h3 (str "Race Id : " race-id)]
-                        [:div {:class "paragraph"} [:p para]]
-                        [players-component players]
-                        [:div {:id "typing-area"}]
-                        [:button {:onClick start-race} "start"]
-                        [:button {:onClick #(end-race @typed-text)} "end"]])
+        (race-component race-id para players typed-text)
         (typing-area typed-text))))
 
 (defn waiting-page [race-id]
-  [:div
-   [:div {:class ["waiting"]} "Waiting for other players to join..."]
-   [:div {:class ["waiting"]} (str "Race Id ->  " race-id)]])
+  (mount-element
+    "container"
+    [:div
+     [:div {:class ["waiting"]} "Waiting for other players to join..."]
+     [:div {:class ["waiting"]} (str "Race Id ->  " race-id)]]))
 
 (defn wait-for-join [race-id]
   (go (let [response (<! (request :get (str "/race?race-id=" race-id)))]
@@ -101,14 +106,16 @@
             race-id ((parse-body response) "race-id")]
         (set-cookie (str "player-id=" player-id))
         (set-cookie (str "race-id=" race-id))
-        (mount-element "container" (waiting-page race-id))
+        (waiting-page race-id)
         (wait-for-join race-id))))
 
 (defn join-race
   [name race-id]
   (go (let [response (<! (request :post "/join-race" {:form-params {:name name :race-id race-id}}))
             parsed-body (parse-body response)
-            race-id (parsed-body "race-id")]
+            player-id (parsed-body "player-id")]
+        (set-cookie (str "player-id=" player-id))
+        (set-cookie (str "race-id=" race-id))
         (show-race race-id))))
 
 (defn join-race-details []
@@ -134,12 +141,28 @@
    [:button {:class ["btn"] :onClick host-page} "Host Race"]
    [:button {:class ["btn"] :onClick join-race-details} "Join Race"]])
 
+(defn has-correct-cookie [cookies]
+  (every? (partial contains? cookies) ["race-id" "player-id"]))
+
+(defn create-map [cookies]
+  (if (empty? cookies)
+    {} (into (sorted-map) (map #(str/split % #"=") (str/split cookies #"; ")))))
+
+(defn join-game-if-has-cookie [cookies]
+  (let [cookies-map (create-map cookies)]
+    (when (has-correct-cookie cookies-map)
+      (show-race (cookies-map "race-id")))))
+
+(defn check-if-already-joined []
+  (-> js/document
+      (.-cookie)
+      (join-game-if-has-cookie)))
+
 (defn main []
-  (mount-element
-    "app"
-    [:<> [title]
-     [:div {:id "container" :class ["container"]}
-      [join-race-component]]]))
+  (when-not (check-if-already-joined)
+    (mount-element
+      "container"
+      (join-race-component))))
 
 (main)
 

@@ -7,6 +7,20 @@
     [cljs-http.client :as http]
     [cljs.core.async :refer [<!]]))
 
+(def host "localhost")
+(def port 9002)
+
+(defn create-link [route]
+  (str "http://" host ":" port route))
+
+; If new method comes add here.
+(defn request
+  ([method route] (request method route {}))
+  ([method route headers]
+   (condp = method
+     :get (http/get (create-link route) (merge {:with-credentials? false} headers))
+     :post (http/post (create-link route) (merge {:with-credentials? false} headers)))))
+
 (defn set-cookie [cookie]
   (-> js/document
       (.-cookie)
@@ -20,14 +34,14 @@
 
 (defn title [] [:div {:class ["heading"]} "Typing racer"])
 
-(defn start-race [] (http/post "http://localhost:9002/start-race" {:with-credentials? false}))
+(defn start-race [] (request :post "/start-race"))
+
+(defn calculate-words [text]
+  (count (str/split text #" ")))
 
 (defn end-race [typed-text]
-  (http/post "http://localhost:9002/end-race"
-             {:with-credentials? false
-              :form-params       {:words-count (if (= 0 (count typed-text))
-                                                 0
-                                                 (count (str/split typed-text #" ")))}}))
+  (request :post "/end-race"
+           {:form-params {:words-count (calculate-words typed-text)}}))
 
 (defn mount-empty-input [id]
   (mount-element id [:div [:input {:type "text" :value ""}]]))
@@ -51,11 +65,11 @@
 (defn players-component [players]
   [:div {:class "joined-player"}
    [:ul "Joined players"
-    (for [player players]
-      [:li (player "name")])]])
+    (for [player players i (range (count players))]
+      [:li {:key i} (player "name")])]])
 
 (defn show-race [race-id]
-  (go (let [response (<! (http/get (str "http://localhost:9002/race?race-id=" race-id) {:with-credentials? false}))
+  (go (let [response (<! (request :get (str "/race?race-id=" race-id)))
             parsed-body (parse-body response)
             para (parsed-body "paragraph")
             players (parsed-body "players")
@@ -76,13 +90,13 @@
    [:div {:class ["waiting"]} (str "Race Id ->  " race-id)]])
 
 (defn wait-for-join [race-id]
-  (go (let [response (<! (http/get (str "http://localhost:9002/race?race-id=" race-id) {:with-credentials? false}))]
+  (go (let [response (<! (request :get (str "/race?race-id=" race-id)))]
         (if (= 1 (count ((parse-body response) "players")))
           (show-race race-id)
           (js/setTimeout #(wait-for-join race-id) 1000)))))
 
 (defn host-game [host]
-  (go (let [response (<! (http/post (str "http://localhost:9002/host?host=" host) {:with-credentials? false}))
+  (go (let [response (<! (request :post (str "/host?host=" host)))
             player-id ((parse-body response) "player-id")
             race-id ((parse-body response) "race-id")]
         (set-cookie (str "player-id=" player-id))
@@ -92,9 +106,7 @@
 
 (defn join-race
   [name race-id]
-  (go (let [response (<! (http/post "http://localhost:9002/join-race"
-                                    {:with-credentials? false
-                                     :form-params       {:name name :race-id race-id}}))
+  (go (let [response (<! (request :post "/join-race" {:form-params {:name name :race-id race-id}}))
             parsed-body (parse-body response)
             race-id (parsed-body "race-id")]
         (show-race race-id))))

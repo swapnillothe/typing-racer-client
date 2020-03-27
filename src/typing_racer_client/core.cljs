@@ -66,7 +66,7 @@
   [:div {:class "joined-player"}
    [:ul "Joined players"
     (for [player players]
-      [:li (player "name") (player "name")])]])
+      [:li {:key (player "name")} (player "name")])]])
 
 (defn show-race [race-id]
   (go (let [response (<! (request :get (str "/race?race-id=" race-id)))

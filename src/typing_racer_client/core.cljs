@@ -65,8 +65,8 @@
 (defn players-component [players]
   [:div {:class "joined-player"}
    [:ul "Joined players"
-    (for [player players i (range (count players))]
-      [:li {:key i} (player "name")])]])
+    (for [player players]
+      [:li (player "name") (player "name")])]])
 
 (defn show-race [race-id]
   (go (let [response (<! (request :get (str "/race?race-id=" race-id)))
@@ -91,7 +91,7 @@
 
 (defn wait-for-join [race-id]
   (go (let [response (<! (request :get (str "/race?race-id=" race-id)))]
-        (if (= 1 (count ((parse-body response) "players")))
+        (if (= 2 (count ((parse-body response) "players")))
           (show-race race-id)
           (js/setTimeout #(wait-for-join race-id) 1000)))))
 

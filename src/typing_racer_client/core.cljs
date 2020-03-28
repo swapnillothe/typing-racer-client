@@ -52,11 +52,20 @@
     "remaining-time"
     (str "Remaining time : " (dec time) " Secs")))
 
+(defn focus [id]
+  (-> js/document
+      (.getElementById id)
+      (.focus)))
+
+(defn allow-typing [text]
+  (do (mount-element "typing-area" [:div [input-component text {:id "typing-area-input"}]])
+      (focus "typing-area-input")))
+
 (defn typing-area
   ([text] (mount-empty-input "typing-area") (typing-area text 10))
   ([text time-to-start]
    (if (zero? time-to-start)
-     (mount-element "typing-area" [:div [input-component text]])
+     (allow-typing text)
      (js/setTimeout
        #(do (typing-area text (dec time-to-start))
             (show-remaining-time time-to-start)) 1000))))

@@ -48,7 +48,7 @@
 		 {:form-params {:words-count (calculate-words typed-text)}}))
 
 (defn mount-empty-input [id]
-  (mount-element id [:div [:input {:type "text" :value ""}]]))
+  (mount-element id [:div [:input {:type "text" :value "" :class ["typing-input"]}]]))
 
 (defn input-component
   ([side-effect-atom] (input-component side-effect-atom {}))
@@ -67,8 +67,8 @@
 	 (.focus)))
 
 (defn allow-typing [text]
-  (do (mount-element "typing-area" [:div [input-component text {:id "typing-area-input"}]])
-	 (focus "typing-area-input")))
+    (do (mount-element "typing-area" [:div [input-component text {:class ["typing-input"] :id "typing-area-input"}]])
+    (focus "typing-area-input")))
 
 (defn typing-area
   ([text] (mount-empty-input "typing-area") (typing-area text 10))
@@ -85,7 +85,7 @@
     (for [player players]
 	 [:li {:key (player :name)} (player :name)])]])
 
-(defn race-component [race-id para players typed-text]
+(defn race-component [para players typed-text]
   (mount-element "container"
 			  [:div
 			   [:h3 (str "Race Id : " race-id)]
@@ -97,12 +97,13 @@
 			   [:button {:onClick #(end-race @typed-text)} "end"]]))
 
 (defn show-race [race-id]
-  (async/go (let [response (parse-body (async/<! (request :get (str "/race?race-id=" race-id))))
-			   para (response :paragraph)
-			   players (response :players)
-			   typed-text (atom "")]
-		    (race-component race-id para players typed-text)
-		    (typing-area typed-text))))
+  (go (let [response (<! (request :get (str "/race?race-id=" race-id)))
+            parsed-body (parse-body response)
+            para (parsed-body "paragraph")
+            players (parsed-body "players")
+            typed-text (atom "")]
+        (race-component para players typed-text)
+        (typing-area typed-text))))
 
 (defn waiting-page [race-id]
   (mount-element
@@ -136,8 +137,7 @@
 (defn update-players-number [previous number]
   (if (empty? number)
     (set-value "no-of-player" @previous)
-    (do (reset! previous number)
-	   (set-value "no-of-player" number))))
+    (do (reset! previous number) (set-value "no-of-player" number))))
 
 (defn host-page []
   (let [name (r/atom "") no-of-players (r/atom 1)]

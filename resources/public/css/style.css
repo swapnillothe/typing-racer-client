@@ -1,34 +1,63 @@
 /* some style */
 
-body {
-    margin: 0;
+html, body {
+    height: 100%;
+    width: 100%;
     background: #ecfbfc;
 }
 
 #app {
-    height: 100vh;
+    height: 100%;
+    width: 100%;
+
+    display: flex;
+    justify-content: center;
+    align-self: auto;
+    flex-direction: column;
 }
 
 .container {
     height: 90%;
+    width: 80%;
+    border: 3px solid green;
+
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
 }
 
-#error-msg{
+#error-msg {
     color: red;
 }
 
-.heading {
-    font-size: 40px;
-    font-family: "Montserrat";
+.typing-input {
+    color: #555;
+    font: normal 1em "Lucida Sans Unicode", sans-serif;
+    font-size: 25px;
+    border-width: medium;
+    width: 200%;
+    height: 35px;
+    font-family: "Lucida Sans Unicode", sans-serif;
+}
+
+#remaining-time {
+    background-color: coral;
+    visibility: visible;
+}
+
+.heading-div {
+    display: flex;
+    align-items: center;
+
+    height: 10%;
+    font-size: 35px;
     color: white;
-    font-weight: 700;
-    height: 6%;
-    margin: 0;
-    background: linear-gradient(90deg, rgba(2,0,36,1) 0%, rgba(0,0,0,1) 7%, rgba(0,212,255,1) 100%);
+    background: linear-gradient(90deg, rgba(2, 0, 36, 1) 0%, rgba(0, 0, 0, 1) 7%, rgba(0, 212, 255, 1) 100%);
+}
+
+.heading {
+    margin-left: 10px;
 }
 
 .waiting {
@@ -60,17 +89,17 @@ body {
 }
 
 .player-detail input {
-     color: whitesmoke;
-     text-align: center;
-     font-size: 20px;
-     height: 30px;
-     border: none;
-     background: transparent;
-     border-bottom: 1px solid;
+    color: whitesmoke;
+    text-align: center;
+    font-size: 20px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    border-bottom: 1px solid;
 }
 
 .player-detail input:focus, .btn:focus {
-     outline: none;
+    outline: none;
 }
 
 .btn {
@@ -86,9 +115,10 @@ body {
 }
 
 .paragraph {
-    background-color: aqua;
+    font-family: Arial, serif;
+    font-size: 20px;
 }
 
-.joined-player{
+.joined-player {
     background-color: chartreuse;
 }

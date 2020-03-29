@@ -105,12 +105,12 @@
 
 (defn wait-for-join [race-id]
   (go (let [response (<! (request :get (str "/race?race-id=" race-id)))]
-        (if (= 2 (count ((parse-body response) "players")))
+        (if ((parse-body response) "all-joined?")
           (show-race race-id)
           (js/setTimeout #(wait-for-join race-id) 1000)))))
 
-(defn host-game [host]
-  (go (let [response (<! (request :post (str "/host?host=" host)))
+(defn host-game [host no-of-players]
+  (go (let [response (<! (request :post (str "/host?host=" host "&&number-of-players=" no-of-players)))
             player-id ((parse-body response) "player-id")
             race-id ((parse-body response) "race-id")]
         (set-cookie (str "player-id=" player-id))
@@ -139,13 +139,29 @@
         [:button {:class ["btn"] :onClick #(join-race @name @race-id)} "Submit"]
         [:div {:id "waiting-component"}]]])))
 
+(defn set-value [id value]
+  (-> js/document
+      (.getElementById id)
+      (.-value)
+      (set! value)))
+
+(defn update-players-number [previous number]
+  (if (empty? number)
+    (set-value "no-of-player" @previous)
+    (do (reset! previous number)
+        (set-value "no-of-player" number))))
+
 (defn host-page []
-  (let [name (r/atom "")]
+  (let [name (r/atom "") no-of-players (r/atom 1)]
     (mount-element
       "container"
       [:div {:class ["player-detail"]}
        [input-component name {:placeholder "Name"}]
-       [:button {:class ["btn"] :onClick #(host-game @name)} "Submit"]])))
+       [:input {:id          "no-of-player"
+                :type        "number"
+                :placeholder "Number of players"
+                :onChange    #(update-players-number no-of-players (.-value (.-target %)))}]
+       [:button {:class ["btn"] :onClick #(host-game @name @no-of-players)} "Submit"]])))
 
 (defn join-race-component []
   [:div {:class ["player-detail"]}

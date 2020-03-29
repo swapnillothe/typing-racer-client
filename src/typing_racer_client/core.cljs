@@ -120,22 +120,24 @@
 
 (defn join-race
   [name race-id]
-  (go (let [response (<! (request :post "/join-race" {:form-params {:name name :race-id race-id}}))
-            parsed-body (parse-body response)
-            player-id (parsed-body "player-id")]
-        (set-cookie (str "player-id=" player-id))
-        (set-cookie (str "race-id=" race-id))
-        (show-race race-id))))
+  (go (let [response (<! (request :post "/join-race" {:form-params {:name name :race-id race-id}}))]
+        (if (= (:status response) 200)
+          (do (set-cookie (str "player-id=" ((parse-body response) "player-id")))
+              (set-cookie (str "race-id=" race-id))
+              (show-race race-id))
+          (mount-element "error-msg" ((parse-body response) "error"))))))
 
 (defn join-race-details []
   (let [name (r/atom "") race-id (r/atom "")]
     (mount-element
       "container"
-      [:div {:class ["player-detail"]}
-       [input-component name {:placeholder "Name"}]
-       [input-component race-id {:placeholder "Race Id"}]
-       [:button {:class ["btn"] :onClick #(join-race @name @race-id)} "Submit"]
-       [:div {:id "waiting-component"}]])))
+      [:<>
+       [:div {:id "error-msg"}]
+       [:div {:class ["player-detail"]}
+        [input-component name {:placeholder "Name"}]
+        [input-component race-id {:placeholder "Race Id"}]
+        [:button {:class ["btn"] :onClick #(join-race @name @race-id)} "Submit"]
+        [:div {:id "waiting-component"}]]])))
 
 (defn host-page []
   (let [name (r/atom "")]

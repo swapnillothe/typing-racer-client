@@ -32,25 +32,6 @@
 (defn mount-element [id body]
   (r/render-component [(fn [] body)] (gdom/getElement id)))
 
-(defn title [] [:div {:class ["heading"]} "Typing racer"])
-
-(defn start-race [] (http/post "http://localhost:9002/start-race" {:with-credentials? false}))
-
-(defn typing-area
-  [typed-text]
-  [:div [:input {:type     "text" :value @typed-text
-			  :onChange #(reset! typed-text (.-value (.-target %)))}]])
-
-(defn show-race [para game-id]
-  (mount-element "container"
-			  (let [typed-text (atom "")]
-			    [:div
-				[:h3 (str "Race Id : " game-id)]
-				[:div {:class "paragraph"} [:p para]]
-				[typing-area typed-text]
-				[:button {:onClick start-race} "start"]
-				[:button {:onClick #(end-race @typed-text)} "end"]])))
-
 (defn set-cookie [cookie]
   (-> js/document
 	 (.-cookie)
@@ -102,7 +83,7 @@
   [:div {:class "joined-player"}
    [:ul "Joined players"
     (for [player players]
-	 [:li {:key (player "name")} (player "name")])]])
+	 [:li {:key (player :name)} (player :name)])]])
 
 (defn race-component [race-id para players typed-text]
   (mount-element "container"
@@ -116,13 +97,12 @@
 			   [:button {:onClick #(end-race @typed-text)} "end"]]))
 
 (defn show-race [race-id]
-  (go (let [response (<! (request :get (str "/race?race-id=" race-id)))
-		  parsed-body (parse-body response)
-		  para (parsed-body "paragraph")
-		  players (parsed-body "players")
-		  typed-text (atom "")]
-	   (race-component race-id para players typed-text)
-	   (typing-area typed-text))))
+  (async/go (let [response (parse-body (async/<! (request :get (str "/race?race-id=" race-id))))
+			   para (response :paragraph)
+			   players (response :players)
+			   typed-text (atom "")]
+		    (race-component race-id para players typed-text)
+		    (typing-area typed-text))))
 
 (defn waiting-page [race-id]
   (mount-element
@@ -132,19 +112,20 @@
 	[:div {:class ["waiting"]} (str "Race Id ->  " race-id)]]))
 
 (defn wait-for-join [race-id]
-  (go (let [response (<! (request :get (str "/race?race-id=" race-id)))]
-	   (if ((parse-body response) "all-joined?")
-		(show-race race-id)
-		(js/setTimeout #(wait-for-join race-id) 1000)))))
+  (async/go (let [response (async/<! (request :get "/wait-status" {:with-credentials? false
+													  :query-params      {:race-id race-id}}))]
+		    (if ((parse-body response) :hasAllJoined)
+			 (show-race race-id)
+			 (js/setTimeout #(wait-for-join race-id) 1000)))))
 
 (defn host-game [host no-of-players]
-  (go (let [response (<! (request :post (str "/host?host=" host "&&number-of-players=" no-of-players)))
-		  player-id ((parse-body response) "player-id")
-		  race-id ((parse-body response) "race-id")]
-	   (set-cookie (str "player-id=" player-id))
-	   (set-cookie (str "race-id=" race-id))
-	   (waiting-page race-id)
-	   (wait-for-join race-id))))
+  (async/go (let [response (async/<! (request :post (str "/host?host=" host "&&number-of-players=" no-of-players)))
+			   player-id ((parse-body response) :player-id)
+			   race-id ((parse-body response) :race-id)]
+		    (set-cookie (str "player-id=" player-id))
+		    (set-cookie (str "race-id=" race-id))
+		    (waiting-page race-id)
+		    (wait-for-join race-id))))
 
 (defn set-value [id value]
   (-> js/document
@@ -185,6 +166,7 @@
 
 	:reagent-render
 	(fn []
+	  (println "Waiting component rendered")
 	  (when @is-waiting
 	    [:div {:class ["waiting"]} "Waiting for other players to join..."
 		[:div (str "Race-Id	:- 	" @race-id)]]))}))
@@ -192,16 +174,18 @@
 (defn join-race
   [name id]
   (async/go
-    (let [response (parse-body (async/<! (http/post "http://localhost:9002/join-race"
-										  {:with-credentials? false
-										   :form-params       {:name name :race-id id}})))]
-	 (if (= (:status response) 200)
-	   (do (reset! race-id (:race-id response))
-		  (reset! para (:paragraph response))
-		  (reset! player-id (:player-id response))
-		  (reset! is-waiting true)
-		  (mount-element "waiting-component" waiting-component))
-	   (mount-element "error-msg" ((parse-body response) "error"))))))
+    (let [response (async/<! (http/post "http://localhost:9002/join-race"
+								{:with-credentials? false
+								 :form-params       {:name name :race-id id}}))
+		body (parse-body response)]
+	 (do
+	   (if (= (:status response) 200)
+		(do (reset! race-id (:race-id body))
+		    (reset! para (:paragraph body))
+		    (reset! player-id (:player-id body))
+		    (reset! is-waiting true)
+		    (mount-element "container" waiting-component))
+		(mount-element "error-msg" "Error"))))))
 
 (defn join-race-details []
   (let [name (r/atom "") race-id (r/atom "")]

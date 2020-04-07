@@ -32,6 +32,7 @@
 (defn mount-element [id body]
   (r/render-component [(fn [] body)] (gdom/getElement id)))
 
+<<<<<<< HEAD
 (defn set-cookie [cookie]
   (-> js/document
 	 (.-cookie)
@@ -46,9 +47,32 @@
 (defn end-race [typed-text]
   (request :post "/end-race"
 		 {:form-params {:words-count (calculate-words typed-text)}}))
+=======
+(defn same? [coll] (every? #{(first coll)} coll))
 
-(defn mount-empty-input [id]
-  (mount-element id [:div [:input {:type "text" :value "" :class ["typing-input"]}]]))
+(defn split-identical [string1 string2]
+  (split-with same? (map vector string1 string2)))
+>>>>>>> Local work :Swapnil
+
+(defn join-first-elements [coll]
+  (str/join "" (map first coll)))
+
+(defn set-value [id value]
+  (-> js/document
+      (.getElementById id)
+      (.-value)
+      (set! value)))
+
+(defn focus [id]
+  (-> js/document
+      (.getElementById id)
+      (.focus)))
+
+(defn sort-out-words [para typed]
+  (let [grouping (split-identical para typed)]
+    {:correct   (join-first-elements (first grouping))
+     :wrong     (join-first-elements (second grouping))
+     :remaining (subs para (count typed))}))
 
 (defn input-component
   ([side-effect-atom] (input-component side-effect-atom {}))
@@ -61,6 +85,7 @@
     "remaining-time"
     (str "Remaining time : " (dec time) " Secs")))
 
+<<<<<<< HEAD
 (defn focus [id]
   (-> js/document
 	 (.getElementById id)
@@ -78,6 +103,52 @@
 	(js/setTimeout
 	  #(do (typing-area text (dec time-to-start))
 		  (show-remaining-time time-to-start)) 1000))))
+=======
+(defn highlight-para [para typed]
+  (let [sorted-out-words (sort-out-words para typed)]
+    (mount-element
+      "paragraph"
+      [:div
+       [:span {:class "typed"} (:correct sorted-out-words)]
+       [:span {:class "wrong"} (:wrong sorted-out-words)]
+       [:span {:class "paragraph"} (:remaining sorted-out-words)]])))
+
+(defn update-last-element [coll e]
+  (update-in coll [(dec (count coll))] (fn [_] e)))
+
+(defn handle-typed-text [typed input]
+  (let [typed-words (str/split @typed #" " -1)]
+    (str/join " " (update-last-element typed-words input))))
+
+(defn i [typed event]
+  (do
+    (let [value (.-value (.-target event))]
+      (reset! typed (handle-typed-text typed value)))
+    (set-value "typing-area-input" (last (str/split @typed #" " -1)))))
+
+(defn typing-manager [para typed]
+  (highlight-para para @typed)
+  [:div
+   [:input {:type     "text"
+            :id       "typing-area-input"
+            :class    ["typing-input"]
+            :onChange #(i typed %)}]])
+
+(defn allow-typing [para]
+  (let [typed (r/atom "")]
+    (do (mount-element
+          "typing-area"
+          #(typing-manager para typed))
+        (focus "typing-area-input"))))
+
+(defn should-start-typing
+  [para time-to-start]
+  (if (zero? time-to-start)
+    (allow-typing para)
+    (js/setTimeout
+      #(do (should-start-typing para (dec time-to-start))
+           (show-remaining-time time-to-start)) 1000)))
+>>>>>>> Local work :Swapnil
 
 (defn players-component [players]
   [:div {:class "joined-player"}
@@ -85,8 +156,9 @@
     (for [player players]
 	 [:li {:key (player :name)} (player :name)])]])
 
-(defn race-component [para players typed-text]
+(defn race-component [para players]
   (mount-element "container"
+<<<<<<< HEAD
 			  [:div
 			   [:h3 (str "Race Id : " race-id)]
 			   [:div {:id "remaining-time"}]
@@ -95,15 +167,21 @@
 			   [:div {:id "typing-area"}]
 			   [:button {:onClick #(request :post "/start-race")} "start"]
 			   [:button {:onClick #(end-race @typed-text)} "end"]]))
+=======
+                 [:div
+                  [:div {:id "remaining-time"} "Remaining Time"]
+                  [players-component players]
+                  [:div {:class "paragraph" :id "paragraph"} [:span para]]
+                  [:div {:id "typing-area"} [:input {:type "text" :value "" :class ["typing-input"]}]]])
+  (should-start-typing para 3))
+>>>>>>> Local work :Swapnil
 
 (defn show-race [race-id]
   (go (let [response (<! (request :get (str "/race?race-id=" race-id)))
             parsed-body (parse-body response)
             para (parsed-body "paragraph")
-            players (parsed-body "players")
-            typed-text (atom "")]
-        (race-component para players typed-text)
-        (typing-area typed-text))))
+            players (parsed-body "players")]
+        (race-component para players))))
 
 (defn waiting-page [race-id]
   (mount-element
@@ -128,12 +206,15 @@
 		    (waiting-page race-id)
 		    (wait-for-join race-id))))
 
+<<<<<<< HEAD
 (defn set-value [id value]
   (-> js/document
 	 (.getElementById id)
 	 (.-value)
 	 (set! value)))
 
+=======
+>>>>>>> Local work :Swapnil
 (defn update-players-number [previous number]
   (if (empty? number)
     (set-value "no-of-player" @previous)
@@ -203,7 +284,7 @@
    [:button {:class ["btn"] :onClick host-page} "Host Race"]
    [:button {:class ["btn"] :onClick join-race-details} "Join Race"]])
 
-(defn has-correct-cookie [cookies]
+(defn correct-cookie? [cookies]
   (every? (partial contains? cookies) ["race-id" "player-id"]))
 
 (defn create-map [cookies]
@@ -212,8 +293,13 @@
 
 (defn join-game-if-has-cookie [cookies]
   (let [cookies-map (create-map cookies)]
+<<<<<<< HEAD
     (when (has-correct-cookie cookies-map)
 	 (show-race (cookies-map "race-id")))))
+=======
+    (when (correct-cookie? cookies-map)
+      (show-race (cookies-map "race-id")))))
+>>>>>>> Local work :Swapnil
 
 (defn check-if-already-joined []
   (-> js/document

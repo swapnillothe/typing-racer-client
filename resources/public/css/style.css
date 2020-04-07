@@ -36,7 +36,7 @@ html, body {
     font: normal 1em "Lucida Sans Unicode", sans-serif;
     font-size: 25px;
     border-width: medium;
-    width: 200%;
+    width: 100%;
     height: 35px;
     font-family: "Lucida Sans Unicode", sans-serif;
 }
@@ -44,6 +44,19 @@ html, body {
 #remaining-time {
     background-color: coral;
     visibility: visible;
+}
+
+.typed {
+    font-family: Arial, serif;
+    font-size: 20px;
+    color: #99cc00;
+}
+
+.wrong {
+    font-family: Arial, serif;
+    font-size: 20px;
+    background: #f0a3a3;
+    color: #803333;
 }
 
 .heading-div {

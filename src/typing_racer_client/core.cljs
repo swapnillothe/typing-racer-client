@@ -11,16 +11,6 @@
 
 (def port 9002)
 
-(defn create-link [route] (str "http://" host ":" port route))
-
-; If new method comes add here.
-(defn request
-  ([method route] (request method route {}))
-  ([method route headers]
-   (condp = method
-	:get (http/get (create-link route) (merge {:with-credentials? false} headers))
-	:post (http/post (create-link route) (merge {:with-credentials? false} headers)))))
-
 (def race-id (r/atom nil))
 
 (def para (r/atom nil))
@@ -30,6 +20,15 @@
 (def player-id (r/atom nil))
 
 (def is-waiting (r/atom nil))
+
+(defn create-url [route] (str "http://" host ":" port route))
+
+(defn request
+  ([method route] (request method route {}))
+  ([method route headers]
+   (condp = method
+	:get (http/get (create-url route) (merge {:with-credentials? false} headers))
+	:post (http/post (create-url route) (merge {:with-credentials? false} headers)))))
 
 (defn mount-element [id body]
   (r/render-component [(fn [] body)] (gdom/getElement id)))
@@ -85,23 +84,14 @@
     "remaining-time"
     (str "Remaining time : " (dec time) " Secs")))
 
-(defn typing-area
-  ([text] (mount-empty-input "typing-area") (typing-area text 10))
-  ([text time-to-start]
-   (if (zero? time-to-start)
-	(allow-typing text)
-	(js/setTimeout
-	  #(do (typing-area text (dec time-to-start))
-		  (show-remaining-time time-to-start)) 1000))))
-
 (defn highlight-para [para typed]
   (let [sorted-out-words (sort-out-words para typed)]
     (mount-element
-      "paragraph"
-      [:div
-       [:span {:class "typed"} (:correct sorted-out-words)]
-       [:span {:class "wrong"} (:wrong sorted-out-words)]
-       [:span {:class "paragraph"} (:remaining sorted-out-words)]])))
+	 "paragraph"
+	 [:div
+	  [:span {:class "typed"} (:correct sorted-out-words)]
+	  [:span {:class "wrong"} (:wrong sorted-out-words)]
+	  [:span {:class "paragraph"} (:remaining sorted-out-words)]])))
 
 (defn update-last-element [coll e]
   (update-in coll [(dec (count coll))] (fn [_] e)))
@@ -113,33 +103,36 @@
 (defn i [typed event]
   (do
     (let [value (.-value (.-target event))]
-      (reset! typed (handle-typed-text typed value)))
+	 (reset! typed (handle-typed-text typed value)))
     (set-value "typing-area-input" (last (str/split @typed #" " -1)))))
 
 (defn typing-manager [para typed]
   (highlight-para para @typed)
   [:div
    [:input {:type     "text"
-            :id       "typing-area-input"
-            :class    ["typing-input"]
-            :onChange #(i typed %)}]])
+		  :id       "typing-area-input"
+		  :class    ["typing-input"]
+		  :onChange #(i typed %)}]])
 
 (defn allow-typing [para]
-    (do (mount-element
-          "typing-area"
-          #(typing-manager para typed))
-        (focus "typing-area-input")))
+  (do (mount-element
+	   "typing-area"
+	   #(typing-manager para typed))
+	 (focus "typing-area-input")))
+
+(defn start-race [para]
+  (request :post "/start-race")
+  (allow-typing para))
 
 (defn should-start-typing
   [para time-to-start]
   (if (zero? time-to-start)
-    (allow-typing para)
+    (start-race para)
     (js/setTimeout
       #(do (should-start-typing para (dec time-to-start))
            (show-remaining-time time-to-start)) 1000)))
 
 (defn players-component [players]
-  (println players)
   [:div {:class "joined-player"}
    [:ul "Joined players"
     (for [player players]
@@ -152,7 +145,6 @@
 			   [players-component players]
 			   [:div {:class "paragraph" :id "paragraph"} [:span para]]
 			   [:div {:id "typing-area"} [:input {:type "text" :value "" :class ["typing-input"]}]]
-			   [:button {:onClick #(request :post "/start-race")} "start"]
 			   [:button {:onClick #(end-race @typed)} "end"]])
   (should-start-typing para 3))
 

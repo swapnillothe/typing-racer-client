@@ -25,6 +25,8 @@
 
 (def para (r/atom nil))
 
+(def typed (r/atom nil))
+
 (def player-id (r/atom nil))
 
 (def is-waiting (r/atom nil))
@@ -32,7 +34,6 @@
 (defn mount-element [id body]
   (r/render-component [(fn [] body)] (gdom/getElement id)))
 
-<<<<<<< HEAD
 (defn set-cookie [cookie]
   (-> js/document
 	 (.-cookie)
@@ -47,12 +48,11 @@
 (defn end-race [typed-text]
   (request :post "/end-race"
 		 {:form-params {:words-count (calculate-words typed-text)}}))
-=======
+
 (defn same? [coll] (every? #{(first coll)} coll))
 
 (defn split-identical [string1 string2]
   (split-with same? (map vector string1 string2)))
->>>>>>> Local work :Swapnil
 
 (defn join-first-elements [coll]
   (str/join "" (map first coll)))
@@ -85,16 +85,6 @@
     "remaining-time"
     (str "Remaining time : " (dec time) " Secs")))
 
-<<<<<<< HEAD
-(defn focus [id]
-  (-> js/document
-	 (.getElementById id)
-	 (.focus)))
-
-(defn allow-typing [text]
-    (do (mount-element "typing-area" [:div [input-component text {:class ["typing-input"] :id "typing-area-input"}]])
-    (focus "typing-area-input")))
-
 (defn typing-area
   ([text] (mount-empty-input "typing-area") (typing-area text 10))
   ([text time-to-start]
@@ -103,7 +93,7 @@
 	(js/setTimeout
 	  #(do (typing-area text (dec time-to-start))
 		  (show-remaining-time time-to-start)) 1000))))
-=======
+
 (defn highlight-para [para typed]
   (let [sorted-out-words (sort-out-words para typed)]
     (mount-element
@@ -135,11 +125,10 @@
             :onChange #(i typed %)}]])
 
 (defn allow-typing [para]
-  (let [typed (r/atom "")]
     (do (mount-element
           "typing-area"
           #(typing-manager para typed))
-        (focus "typing-area-input"))))
+        (focus "typing-area-input")))
 
 (defn should-start-typing
   [para time-to-start]
@@ -148,9 +137,9 @@
     (js/setTimeout
       #(do (should-start-typing para (dec time-to-start))
            (show-remaining-time time-to-start)) 1000)))
->>>>>>> Local work :Swapnil
 
 (defn players-component [players]
+  (println players)
   [:div {:class "joined-player"}
    [:ul "Joined players"
     (for [player players]
@@ -158,29 +147,20 @@
 
 (defn race-component [para players]
   (mount-element "container"
-<<<<<<< HEAD
 			  [:div
-			   [:h3 (str "Race Id : " race-id)]
-			   [:div {:id "remaining-time"}]
-			   [:div {:class "paragraph"} [:p para]]
+			   [:div {:id "remaining-time"} "Remaining Time"]
 			   [players-component players]
-			   [:div {:id "typing-area"}]
+			   [:div {:class "paragraph" :id "paragraph"} [:span para]]
+			   [:div {:id "typing-area"} [:input {:type "text" :value "" :class ["typing-input"]}]]
 			   [:button {:onClick #(request :post "/start-race")} "start"]
-			   [:button {:onClick #(end-race @typed-text)} "end"]]))
-=======
-                 [:div
-                  [:div {:id "remaining-time"} "Remaining Time"]
-                  [players-component players]
-                  [:div {:class "paragraph" :id "paragraph"} [:span para]]
-                  [:div {:id "typing-area"} [:input {:type "text" :value "" :class ["typing-input"]}]]])
+			   [:button {:onClick #(end-race @typed)} "end"]])
   (should-start-typing para 3))
->>>>>>> Local work :Swapnil
 
 (defn show-race [race-id]
   (go (let [response (<! (request :get (str "/race?race-id=" race-id)))
             parsed-body (parse-body response)
-            para (parsed-body "paragraph")
-            players (parsed-body "players")]
+            para (parsed-body :paragraph)
+            players (parsed-body :players)]
         (race-component para players))))
 
 (defn waiting-page [race-id]
@@ -206,15 +186,6 @@
 		    (waiting-page race-id)
 		    (wait-for-join race-id))))
 
-<<<<<<< HEAD
-(defn set-value [id value]
-  (-> js/document
-	 (.getElementById id)
-	 (.-value)
-	 (set! value)))
-
-=======
->>>>>>> Local work :Swapnil
 (defn update-players-number [previous number]
   (if (empty? number)
     (set-value "no-of-player" @previous)
@@ -247,7 +218,6 @@
 
 	:reagent-render
 	(fn []
-	  (println "Waiting component rendered")
 	  (when @is-waiting
 	    [:div {:class ["waiting"]} "Waiting for other players to join..."
 		[:div (str "Race-Id	:- 	" @race-id)]]))}))
@@ -293,13 +263,8 @@
 
 (defn join-game-if-has-cookie [cookies]
   (let [cookies-map (create-map cookies)]
-<<<<<<< HEAD
-    (when (has-correct-cookie cookies-map)
-	 (show-race (cookies-map "race-id")))))
-=======
     (when (correct-cookie? cookies-map)
       (show-race (cookies-map "race-id")))))
->>>>>>> Local work :Swapnil
 
 (defn check-if-already-joined []
   (-> js/document

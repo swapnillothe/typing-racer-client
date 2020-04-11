@@ -1,11 +1,15 @@
 (ns ^:figwheel-hooks typing-racer-client.core
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
+    [goog.dom :as gdom]
     [reagent.core :as r]
     [clojure.string :as str]
     [cljs-http.client :as http]
-    [cljs.core.async :as async]
-    [typing-racer-client.utils :refer :all]))
+    [cljs.core.async :as async]))
+
+(def host "localhost")
+
+(def port 9002)
 
 (def race-id (r/atom nil))
 
@@ -16,6 +20,26 @@
 (def player-id (r/atom nil))
 
 (def is-waiting (r/atom nil))
+
+(defn create-url [route] (str "http://" host ":" port route))
+
+(defn request
+  ([method route] (request method route {}))
+  ([method route headers]
+   (condp = method
+	:get (http/get (create-url route) (merge {:with-credentials? false} headers))
+	:post (http/post (create-url route) (merge {:with-credentials? false} headers)))))
+
+(defn mount-element [id body]
+  (r/render-component [(fn [] body)] (gdom/getElement id)))
+
+(defn set-cookie [cookie]
+  (-> js/document
+	 (.-cookie)
+	 (set! cookie)))
+
+(defn parse-body [res]
+  (js->clj (.parse js/JSON (:body res)) :keywordize-keys true))
 
 (defn calculate-words [text]
   (count (str/split text #" ")))
@@ -31,6 +55,17 @@
 
 (defn join-first-elements [coll]
   (str/join "" (map first coll)))
+
+(defn set-value [id value]
+  (-> js/document
+      (.getElementById id)
+      (.-value)
+      (set! value)))
+
+(defn focus [id]
+  (-> js/document
+      (.getElementById id)
+      (.focus)))
 
 (defn sort-out-words [para typed]
   (let [grouping (split-identical para typed)]
@@ -69,7 +104,7 @@
   (do
     (let [value (.-value (.-target event))]
 	 (reset! typed (handle-typed-text typed value)))
-    (set-value-of-dom-element "typing-area-input" (last (str/split @typed #" " -1)))))
+    (set-value "typing-area-input" (last (str/split @typed #" " -1)))))
 
 (defn typing-manager [para typed]
   (highlight-para para @typed)
@@ -145,8 +180,8 @@
 
 (defn update-players-number [previous number]
   (if (empty? number)
-    (set-value-of-dom-element "no-of-player" @previous)
-    (do (reset! previous number) (set-value-of-dom-element "no-of-player" number))))
+    (set-value "no-of-player" @previous)
+    (do (reset! previous number) (set-value "no-of-player" number))))
 
 (defn host-page []
   (let [name (r/atom "") no-of-players (r/atom 1)]
@@ -216,8 +251,7 @@
 
 (defn create-map [cookies]
   (if (empty? cookies)
-    {}
-    (into (sorted-map) (map #(str/split % #"=") (str/split cookies #"; ")))))
+    {} (into (sorted-map) (map #(str/split % #"=") (str/split cookies #"; ")))))
 
 (defn join-game-if-has-cookie [cookies]
   (let [cookies-map (create-map cookies)]

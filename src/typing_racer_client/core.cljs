@@ -15,7 +15,7 @@
 
 (def para (r/atom nil))
 
-(def typed (r/atom nil))
+(def typed-words (r/atom nil))
 
 (def player-id (r/atom nil))
 
@@ -48,14 +48,6 @@
   (request :post "/end-race"
 		 {:form-params {:words-count (calculate-words typed-text)}}))
 
-(defn same? [coll] (every? #{(first coll)} coll))
-
-(defn split-identical [string1 string2]
-  (split-with same? (map vector string1 string2)))
-
-(defn join-first-elements [coll]
-  (str/join "" (map first coll)))
-
 (defn set-value [id value]
   (-> js/document
       (.getElementById id)
@@ -66,6 +58,12 @@
   (-> js/document
       (.getElementById id)
       (.focus)))
+
+(defn split-identical [string1 string2]
+  (split-with (partial apply =) (map vector string1 string2)))
+
+(defn join-first-elements [coll]
+  (str/join "" (map first coll)))
 
 (defn sort-out-words [para typed]
   (let [grouping (split-identical para typed)]
@@ -84,8 +82,8 @@
     "remaining-time"
     (str "Remaining time : " (dec time) " Secs")))
 
-(defn highlight-para [para typed]
-  (let [sorted-out-words (sort-out-words para typed)]
+(defn highlight-para [para typed-words]
+  (let [sorted-out-words (sort-out-words para typed-words)]
     (mount-element
 	 "paragraph"
 	 [:div
@@ -93,32 +91,29 @@
 	  [:span {:class "wrong"} (:wrong sorted-out-words)]
 	  [:span {:class "paragraph"} (:remaining sorted-out-words)]])))
 
-(defn update-last-element [coll e]
-  (update-in coll [(dec (count coll))] (fn [_] e)))
+(defn append-word [typed word]
+  (let [typed-words (str/split @typed #" " -1)
+	   index (dec (count typed-words))]
+    (str/join " " (assoc typed-words index word))))
 
-(defn handle-typed-text [typed input]
-  (let [typed-words (str/split @typed #" " -1)]
-    (str/join " " (update-last-element typed-words input))))
+(defn type [typed-words event]
+  (let [word (.-value (.-target event))]
+    (reset! typed-words (append-word typed-words word)))
+  (set-value "typing-area-input" (last (str/split @typed-words #" " -1))))
 
-(defn i [typed event]
-  (do
-    (let [value (.-value (.-target event))]
-	 (reset! typed (handle-typed-text typed value)))
-    (set-value "typing-area-input" (last (str/split @typed #" " -1)))))
-
-(defn typing-manager [para typed]
-  (highlight-para para @typed)
+(defn typing-manager [para typed-words]
+  (highlight-para para @typed-words)
   [:div
    [:input {:type     "text"
 		  :id       "typing-area-input"
 		  :class    ["typing-input"]
-		  :onChange #(i typed %)}]])
+		  :onChange #(type typed-words %)}]])
 
 (defn allow-typing [para]
-  (do (mount-element
-	   "typing-area"
-	   #(typing-manager para typed))
-	 (focus "typing-area-input")))
+  (mount-element
+    "typing-area"
+    #(typing-manager para typed-words))
+  (focus "typing-area-input"))
 
 (defn start-race [para]
   (request :post "/start-race")
@@ -145,7 +140,7 @@
 			   [players-component players]
 			   [:div {:class "paragraph" :id "paragraph"} [:span para]]
 			   [:div {:id "typing-area"} [:input {:type "text" :value "" :class ["typing-input"]}]]
-			   [:button {:onClick #(end-race @typed)} "end"]])
+			   [:button {:onClick #(end-race @typed-words)} "end"]])
   (should-start-typing para 3))
 
 (defn show-race [race-id]

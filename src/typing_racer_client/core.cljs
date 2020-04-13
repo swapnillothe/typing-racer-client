@@ -13,8 +13,6 @@
 
 (def race-id (r/atom nil))
 
-(def para (r/atom nil))
-
 (def typed-words (r/atom nil))
 
 (def player-id (r/atom nil))
@@ -82,37 +80,16 @@
     "remaining-time"
     (str "Remaining time : " (dec time) " Secs")))
 
-(defn highlight-para [para typed-words]
-  (let [sorted-out-words (sort-out-words para typed-words)]
-    (mount-element
-	 "paragraph"
-	 [:div
-	  [:span {:class "typed"} (:correct sorted-out-words)]
-	  [:span {:class "wrong"} (:wrong sorted-out-words)]
-	  [:span {:class "paragraph"} (:remaining sorted-out-words)]])))
-
 (defn append-word [typed word]
-  (let [typed-words (str/split @typed #" " -1)
-	   index (dec (count typed-words))]
-    (str/join " " (assoc typed-words index word))))
+  (let [words (str/split typed #" " -1)
+	   index (dec (count words))]
+    (str/join " " (assoc words index word))))
 
-(defn type [typed-words event]
+(defn type [event]
   (let [word (.-value (.-target event))]
-    (reset! typed-words (append-word typed-words word)))
-  (set-value "typing-area-input" (last (str/split @typed-words #" " -1))))
-
-(defn typing-manager [para typed-words]
-  (highlight-para para @typed-words)
-  [:div
-   [:input {:type     "text"
-		  :id       "typing-area-input"
-		  :class    ["typing-input"]
-		  :onChange #(type typed-words %)}]])
+    (swap! typed-words #(append-word % word))))
 
 (defn allow-typing [para]
-  (mount-element
-    "typing-area"
-    #(typing-manager para typed-words))
   (focus "typing-area-input"))
 
 (defn start-race [para]
@@ -133,13 +110,28 @@
     (for [player players]
 	 [:li {:key (player :name)} (player :name)])]])
 
+(defn typing-area []
+  [:input
+   {:type     "text"
+    :value    (last (str/split @typed-words #" " -1))
+    :id       "typing-area-input"
+    :class    ["typing-input"]
+    :onChange type}])
+
+(defn paragraph [para]
+  (let [sorted-out-words (sort-out-words para @typed-words)]
+    [:div
+	[:span {:class "typed"} (:correct sorted-out-words)]
+	[:span {:class "wrong"} (:wrong sorted-out-words)]
+	[:span {:class "paragraph"} (:remaining sorted-out-words)]]))
+
 (defn race-component [para players]
   (mount-element "container"
 			  [:div
 			   [:div {:id "remaining-time"} "Remaining Time"]
 			   [players-component players]
-			   [:div {:class "paragraph" :id "paragraph"} [:span para]]
-			   [:div {:id "typing-area"} [:input {:type "text" :value "" :class ["typing-input"]}]]
+			   [paragraph para]
+			   [typing-area]
 			   [:button {:onClick #(end-race @typed-words)} "end"]])
   (should-start-typing para 3))
 

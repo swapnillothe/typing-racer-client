@@ -13,7 +13,11 @@
 
 (def race-id (r/atom nil))
 
-(def typed-words (r/atom nil))
+(def para (r/atom ""))
+
+(def typed-words (r/atom ""))
+
+(def current-typed (r/atom ""))
 
 (def player-id (r/atom nil))
 
@@ -85,9 +89,18 @@
 	   index (dec (count words))]
     (str/join " " (assoc words index word))))
 
+(defn wrong? [para typed]
+  (not (= (subs para 0 (count typed)) typed)))
+
 (defn type [event]
   (let [word (.-value (.-target event))]
-    (swap! typed-words #(append-word % word))))
+    (if
+	 (not (wrong? @para (append-word @typed-words @current-typed)))
+	 (reset! current-typed (last (str/split word #" " -1)))
+	 (reset! current-typed word))
+    (when
+	 (not (wrong? @para (append-word @typed-words @current-typed)))
+	 (swap! typed-words #(append-word % word)))))
 
 (defn allow-typing [para]
   (focus "typing-area-input"))
@@ -110,16 +123,18 @@
     (for [player players]
 	 [:li {:key (player :name)} (player :name)])]])
 
-(defn typing-area []
+(defn typing-area [para]
   [:input
    {:type     "text"
-    :value    (last (str/split @typed-words #" " -1))
+    :value    (if (wrong? para (append-word @typed-words @current-typed))
+			 @current-typed
+			 (last (str/split @typed-words #" " -1)))
     :id       "typing-area-input"
     :class    ["typing-input"]
     :onChange type}])
 
 (defn paragraph [para]
-  (let [sorted-out-words (sort-out-words para @typed-words)]
+  (let [sorted-out-words (sort-out-words para (append-word @typed-words @current-typed))]
     [:div
 	[:span {:class "typed"} (:correct sorted-out-words)]
 	[:span {:class "wrong"} (:wrong sorted-out-words)]
@@ -131,16 +146,17 @@
 			   [:div {:id "remaining-time"} "Remaining Time"]
 			   [players-component players]
 			   [paragraph para]
-			   [typing-area]
+			   [typing-area para]
 			   [:button {:onClick #(end-race @typed-words)} "end"]])
   (should-start-typing para 3))
 
 (defn show-race [race-id]
   (go (let [response (<! (request :get (str "/race?race-id=" race-id)))
-            parsed-body (parse-body response)
-            para (parsed-body :paragraph)
-            players (parsed-body :players)]
-        (race-component para players))))
+		  parsed-body (parse-body response)
+		  paragraph (parsed-body :paragraph)
+		  players (parsed-body :players)]
+	   (reset! para paragraph)
+	   (race-component paragraph players))))
 
 (defn waiting-page [race-id]
   (mount-element

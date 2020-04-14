@@ -9,7 +9,7 @@
 
 (def host "localhost")
 
-(def remaining-time (r/atom 3))
+(def waiting-time (r/atom 3))
 
 (def port 9002)
 
@@ -82,10 +82,8 @@
    [:input (merge {:type     "text"
 			    :onChange #(reset! side-effect-atom (.-value (.-target %)))} props)]))
 
-(defn show-remaining-time [time]
-  (mount-element
-    "remaining-time"
-    (str "Remaining time : " (dec time) " Secs")))
+(defn waiting-time-component []
+    [:div (str "Wait for : " @waiting-time " Secs")])
 
 (defn append-word [typed word]
   (let [words (str/split typed #" " -1)
@@ -122,12 +120,11 @@
 
 (defn should-start-typing
   [para]
-  (if (zero? @remaining-time)
+  (if (zero? @waiting-time)
     (start-race para)
     (js/setTimeout
-	 #(do (should-start-typing para)
-		 (swap! remaining-time dec)
-		 (show-remaining-time @remaining-time)) 1000)))
+	 #(do (swap! waiting-time dec)
+		 (should-start-typing para)) 1000)))
 
 (defn players-component [players]
   [:div {:class "joined-player"}
@@ -142,9 +139,11 @@
 			 @current-typed
 			 (last (str/split @typed-words #" " -1)))
     :id       "typing-area-input"
+    :autoComplete "off"
     :class    ["typing-input"]
-    :onChange (when
-			 (zero? @remaining-time) type)}])
+    :onChange (if (zero? @waiting-time)
+			 type
+			 (fn []))}])
 
 (defn paragraph [para]
   (let [sorted-out-words (sort-out-words para (append-word @typed-words @current-typed))]
@@ -156,7 +155,7 @@
 (defn race-component [para players]
   (mount-element "container"
 			  [:div
-			   [:div {:id "remaining-time"} "Remaining Time"]
+			   [waiting-time-component]
 			   [players-component players]
 			   [paragraph para]
 			   [typing-area para]])

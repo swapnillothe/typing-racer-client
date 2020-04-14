@@ -35,20 +35,21 @@
 (defn mount-element [id body]
   (r/render-component [(fn [] body)] (gdom/getElement id)))
 
-(defn set-cookie [cookie]
-  (-> js/document
-	 (.-cookie)
-	 (set! cookie)))
-
 (defn parse-body [res]
   (js->clj (.parse js/JSON (:body res)) :keywordize-keys true))
 
 (defn calculate-words [text]
   (count (str/split text #" ")))
 
+(defn result
+  [res]
+  [:div res])
+
 (defn end-race [typed-text]
-  (request :post "/end-race"
-		 {:form-params {:words-count (calculate-words typed-text)}}))
+  (go
+    (let [response (<! (request :post "/end-race"
+						  {:form-params {:words-count (calculate-words typed-text)}}))]
+	 (mount-element "container" [result (:body response)]))))
 
 (defn set-value [id value]
   (-> js/document
@@ -122,8 +123,8 @@
   (if (zero? time-to-start)
     (start-race para)
     (js/setTimeout
-      #(do (should-start-typing para (dec time-to-start))
-           (show-remaining-time time-to-start)) 1000)))
+	 #(do (should-start-typing para (dec time-to-start))
+		 (show-remaining-time time-to-start)) 1000)))
 
 (defn players-component [players]
   [:div {:class "joined-player"}
@@ -181,10 +182,7 @@
 
 (defn host-game [host no-of-players]
   (async/go (let [response (async/<! (request :post (str "/host?host=" host "&&number-of-players=" no-of-players)))
-			   player-id ((parse-body response) :player-id)
 			   race-id ((parse-body response) :race-id)]
-		    (set-cookie (str "player-id=" player-id))
-		    (set-cookie (str "race-id=" race-id))
 		    (waiting-page race-id)
 		    (wait-for-join race-id))))
 
@@ -256,28 +254,10 @@
    [:button {:class ["btn"] :onClick host-page} "Host Race"]
    [:button {:class ["btn"] :onClick join-race-details} "Join Race"]])
 
-(defn correct-cookie? [cookies]
-  (every? (partial contains? cookies) ["race-id" "player-id"]))
-
-(defn create-map [cookies]
-  (if (empty? cookies)
-    {} (into (sorted-map) (map #(str/split % #"=") (str/split cookies #"; ")))))
-
-(defn join-game-if-has-cookie [cookies]
-  (let [cookies-map (create-map cookies)]
-    (when (correct-cookie? cookies-map)
-      (show-race (cookies-map "race-id")))))
-
-(defn check-if-already-joined []
-  (-> js/document
-	 (.-cookie)
-	 (join-game-if-has-cookie)))
-
 (defn main []
-  (when-not (check-if-already-joined)
     (mount-element
 	 "container"
-	 (join-race-component))))
+	 (join-race-component)))
 
 (main)
 

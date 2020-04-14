@@ -92,6 +92,11 @@
 (defn wrong? [para typed]
   (not (= (subs para 0 (count typed)) typed)))
 
+(defn end-race?
+  [para typed]
+  (and (= (count typed) (count para))
+	  (not (wrong? para typed))))
+
 (defn type [event]
   (let [word (.-value (.-target event))]
     (if
@@ -100,7 +105,10 @@
 	 (reset! current-typed word))
     (when
 	 (not (wrong? @para (append-word @typed-words @current-typed)))
-	 (swap! typed-words #(append-word % word)))))
+	 (swap! typed-words #(append-word % word)))
+    (when
+	 (end-race? @para @typed-words)
+	 (end-race @typed-words))))
 
 (defn allow-typing [para]
   (focus "typing-area-input"))
@@ -146,8 +154,7 @@
 			   [:div {:id "remaining-time"} "Remaining Time"]
 			   [players-component players]
 			   [paragraph para]
-			   [typing-area para]
-			   [:button {:onClick #(end-race @typed-words)} "end"]])
+			   [typing-area para]])
   (should-start-typing para 3))
 
 (defn show-race [race-id]

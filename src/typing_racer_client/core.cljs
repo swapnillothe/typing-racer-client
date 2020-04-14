@@ -101,7 +101,7 @@
 (defn type [event]
   (let [word (.-value (.-target event))]
     (if
-	 (not (wrong? @para (append-word @typed-words @current-typed)))
+	 (not (wrong? @para (append-word @typed-words word)))
 	 (reset! current-typed (last (str/split word #" " -1)))
 	 (reset! current-typed word))
     (when
@@ -126,12 +126,6 @@
 	 #(do (swap! waiting-time dec)
 		 (should-start-typing para)) 1000)))
 
-(defn players-component [players]
-  [:div {:class "joined-player"}
-   [:ul "Joined players"
-    (for [player players]
-	 [:li {:key (player :name)} (player :name)])]])
-
 (defn typing-area [para]
   [:input
    {:type     "text"
@@ -139,6 +133,7 @@
 			 @current-typed
 			 (last (str/split @typed-words #" " -1)))
     :id       "typing-area-input"
+    :autoFocus 1
     :autoComplete "off"
     :class    ["typing-input"]
     :onChange (if (zero? @waiting-time)
@@ -152,22 +147,20 @@
 	[:span {:class "wrong"} (:wrong sorted-out-words)]
 	[:span {:class "paragraph"} (:remaining sorted-out-words)]]))
 
-(defn race-component [para players]
-  (mount-element "container"
-			  [:div
-			   [waiting-time-component]
-			   [players-component players]
-			   [paragraph para]
-			   [typing-area para]])
-  (should-start-typing para))
+(defn race-component
+  [para]
+  [:div
+   (when (not (zero? @waiting-time))
+	[waiting-time-component])
+   [paragraph para]
+   [typing-area para]])
 
-(defn show-race [race-id]
-  (go (let [response (<! (request :get (str "/race?race-id=" race-id)))
-		  parsed-body (parse-body response)
-		  paragraph (parsed-body :paragraph)
-		  players (parsed-body :players)]
+(defn initiate-race [race-id]
+  (go (let [body (parse-body (<! (request :get (str "/race?race-id=" race-id))))
+		  paragraph (body :paragraph)]
 	   (reset! para paragraph)
-	   (race-component paragraph players))))
+	   (mount-element "container" [race-component paragraph])
+	   (should-start-typing paragraph))))
 
 (defn waiting-page [race-id]
   (mount-element
@@ -180,7 +173,7 @@
   (async/go (let [response (async/<! (request :get "/wait-status" {:with-credentials? false
 													  :query-params      {:race-id race-id}}))]
 		    (if ((parse-body response) :hasAllJoined)
-			 (show-race race-id)
+			 (initiate-race race-id)
 			 (js/setTimeout #(wait-for-join race-id) 1000)))))
 
 (defn host-game [host no-of-players]
@@ -215,7 +208,7 @@
 															 :query-params      {:race-id @race-id}}))]
 	    (async/<! (async/timeout 1000))
 	    (if (true? (:hasAllJoined (parse-body response)))
-		 (show-race @race-id)
+		 (initiate-race @race-id)
 		 (recur (async/<! (http/get "http://localhost:9002/wait-status" {:with-credentials? false
 															:query-params      {:race-id @race-id}}))))))
 

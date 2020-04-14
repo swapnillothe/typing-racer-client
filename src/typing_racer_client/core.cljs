@@ -9,6 +9,8 @@
 
 (def host "localhost")
 
+(def remaining-time (r/atom 3))
+
 (def port 9002)
 
 (def race-id (r/atom nil))
@@ -119,12 +121,13 @@
   (allow-typing para))
 
 (defn should-start-typing
-  [para time-to-start]
-  (if (zero? time-to-start)
+  [para]
+  (if (zero? @remaining-time)
     (start-race para)
     (js/setTimeout
-	 #(do (should-start-typing para (dec time-to-start))
-		 (show-remaining-time time-to-start)) 1000)))
+	 #(do (should-start-typing para)
+		 (swap! remaining-time dec)
+		 (show-remaining-time @remaining-time)) 1000)))
 
 (defn players-component [players]
   [:div {:class "joined-player"}
@@ -140,7 +143,8 @@
 			 (last (str/split @typed-words #" " -1)))
     :id       "typing-area-input"
     :class    ["typing-input"]
-    :onChange type}])
+    :onChange (when
+			 (zero? @remaining-time) type)}])
 
 (defn paragraph [para]
   (let [sorted-out-words (sort-out-words para (append-word @typed-words @current-typed))]
@@ -156,7 +160,7 @@
 			   [players-component players]
 			   [paragraph para]
 			   [typing-area para]])
-  (should-start-typing para 3))
+  (should-start-typing para))
 
 (defn show-race [race-id]
   (go (let [response (<! (request :get (str "/race?race-id=" race-id)))

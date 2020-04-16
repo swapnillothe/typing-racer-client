@@ -40,17 +40,14 @@
 (defn parse-body [res]
   (js->clj (.parse js/JSON (:body res)) :keywordize-keys true))
 
-(defn calculate-words [text]
-  (count (str/split text #" ")))
-
 (defn result
   [res]
   [:div res])
 
-(defn end-race [typed-text]
+(defn end-race []
   (go
     (let [response (<! (request :post "/end-race"
-						  {:form-params {:words-count (calculate-words typed-text)}}))]
+						  {:form-params {:race-id @race-id}}))]
 	 (mount-element "container" [result (:body response)]))))
 
 (defn set-value [id value]
@@ -109,19 +106,15 @@
 	 (swap! typed-words #(append-word % word)))
     (when
 	 (end-race? @para @typed-words)
-	 (end-race @typed-words))))
+	 (end-race))))
 
-(defn allow-typing [para]
+(defn allow-typing []
   (focus "typing-area-input"))
-
-(defn start-race [para]
-  (request :post "/start-race")
-  (allow-typing para))
 
 (defn should-start-typing
   [para]
   (if (zero? @waiting-time)
-    (start-race para)
+    (allow-typing)
     (js/setTimeout
 	 #(do (swap! waiting-time dec)
 		 (should-start-typing para)) 1000)))
@@ -176,9 +169,12 @@
 			 (initiate-race race-id)
 			 (js/setTimeout #(wait-for-join race-id) 1000)))))
 
+(defn set-race-id [id] (reset! race-id id))
+
 (defn host-game [host no-of-players]
   (async/go (let [response (async/<! (request :post (str "/host?host=" host "&&number-of-players=" no-of-players)))
 			   race-id ((parse-body response) :race-id)]
+		    (set-race-id race-id)
 		    (waiting-page race-id)
 		    (wait-for-join race-id))))
 
@@ -227,7 +223,7 @@
 		body (parse-body response)]
 	 (do
 	   (if (= (:status response) 200)
-		(do (reset! race-id (:race-id body))
+		(do (set-race-id (:race-id body))
 		    (reset! para (:paragraph body))
 		    (reset! player-id (:player-id body))
 		    (reset! is-waiting true)

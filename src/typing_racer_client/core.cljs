@@ -40,15 +40,8 @@
 (defn parse-body [res]
   (js->clj (.parse js/JSON (:body res)) :keywordize-keys true))
 
-(defn result
-  [res]
-  [:div res])
-
 (defn end-race []
-  (go
-    (let [response (<! (request :post "/end-race"
-						  {:form-params {:race-id @race-id}}))]
-	 (mount-element "container" [result (:body response)]))))
+  (request :post "/end-race" {:form-params {:race-id @race-id :player-id @player-id}}))
 
 (defn set-value [id value]
   (-> js/document
@@ -103,7 +96,11 @@
 	 (reset! current-typed word))
     (when
 	 (not (wrong? @para (append-word @typed-words @current-typed)))
-	 (swap! typed-words #(append-word % word)))
+	 (do
+	   (swap! typed-words #(append-word % word))
+	   (when (= (last @typed-words) " ")
+		(request :post "/speed"
+			    {:form-params {:player-id @player-id :race-id @race-id :typed @typed-words}}))))
     (when
 	 (end-race? @para @typed-words)
 	 (end-race))))
@@ -142,18 +139,25 @@
 
 (defn result-component []
   (let [results (r/atom [])]
-    (fn []
-	 (js/setInterval
-	   (fn []
-		(go
-		  (reset! results (parse-body (<! (request :get (str "/result?race-id=" @race-id)))))))
-	   1000)
-	 [:div
-	  {:class ["result"] :id "result"}
-	  (map
-	    (fn [player-details]
-		 [:div (str (player-details :name) (player-details :speed))])
-	    @results)])))
+    (fn [] (r/create-class
+		   {:component-did-mount
+		    (fn []
+			 (println "Component mounted!!!")
+			 (js/setInterval
+			   (fn []
+				(go
+				  (reset! results (parse-body (<! (request :get (str "/result?race-id=" @race-id)))))))
+			   1000))
+		    :reagent-render
+		    (fn [] [:div
+				  {:class ["results"] :id "results"}
+				  (map
+				    (fn [player-details]
+					 [:div
+					  {:class ["result"]}
+					  [:span {:class ["name"]} (player-details :name)]
+					  [:span {:class ["speed"]} (player-details :speed)]])
+				    @results)])}))))
 
 (defn race-component
   [para]
@@ -187,9 +191,15 @@
 
 (defn set-race-id [id] (reset! race-id id))
 
+(defn set-player-id [id] (reset! player-id id))
+
 (defn host-game [host no-of-players]
   (async/go (let [response (async/<! (request :post (str "/host?host=" host "&&number-of-players=" no-of-players)))
+			   player-id ((parse-body response) :player-id)
 			   race-id ((parse-body response) :race-id)]
+		    (set-cookie (str "player-id=" player-id))
+		    (set-cookie (str "race-id=" race-id))
+		    (set-player-id player-id)
 		    (set-race-id race-id)
 		    (waiting-page race-id)
 		    (wait-for-join race-id))))

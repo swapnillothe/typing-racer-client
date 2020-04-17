@@ -142,3 +142,8 @@ html, body {
 .joined-player {
     background-color: chartreuse;
 }
+
+.result {
+    display: flex;
+    justify-content: space-around;
+}

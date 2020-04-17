@@ -140,13 +140,29 @@
 	[:span {:class "wrong"} (:wrong sorted-out-words)]
 	[:span {:class "paragraph"} (:remaining sorted-out-words)]]))
 
+(defn result-component []
+  (let [results (r/atom [])]
+    (fn []
+	 (js/setInterval
+	   (fn []
+		(go
+		  (reset! results (parse-body (<! (request :get (str "/result?race-id=" @race-id)))))))
+	   1000)
+	 [:div
+	  {:class ["result"] :id "result"}
+	  (map
+	    (fn [player-details]
+		 [:div (str (player-details :name) (player-details :speed))])
+	    @results)])))
+
 (defn race-component
   [para]
   [:div
    (when (not (zero? @waiting-time))
 	[waiting-time-component])
    [paragraph para]
-   [typing-area para]])
+   [typing-area para]
+   [result-component]])
 
 (defn initiate-race [race-id]
   (go (let [body (parse-body (<! (request :get (str "/race?race-id=" race-id))))

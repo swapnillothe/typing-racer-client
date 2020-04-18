@@ -3,6 +3,9 @@
 html, body {
     height: 100%;
     width: 100%;
+    margin: 0;
+    padding: 0;
+
     background: #ecfbfc;
 }
 
@@ -18,13 +21,12 @@ html, body {
 
 .container {
     height: 90%;
-    width: 80%;
-    border: 3px solid green;
 
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     flex-direction: column;
+    padding-top: 5%;
 }
 
 #error-msg {
@@ -54,14 +56,10 @@ html, body {
 }
 
 .typed {
-    font-family: Arial, serif;
-    font-size: 20px;
     color: #99cc00;
 }
 
 .wrong {
-    font-family: Arial, serif;
-    font-size: 20px;
     background: #f0a3a3;
     color: #803333;
 }
@@ -71,7 +69,7 @@ html, body {
     align-items: center;
 
     height: 10%;
-    font-size: 35px;
+    font-size: 40px;
     color: white;
     background: linear-gradient(90deg, rgba(2, 0, 36, 1) 0%, rgba(0, 0, 0, 1) 7%, rgba(0, 212, 255, 1) 100%);
 }
@@ -134,16 +132,47 @@ html, body {
     letter-spacing: normal;
 }
 
-.paragraph {
-    font-family: Arial, serif;
-    font-size: 20px;
-}
-
 .joined-player {
     background-color: chartreuse;
+}
+
+.results {
+    font-size: 20px;
 }
 
 .result {
     display: flex;
     justify-content: space-around;
+    padding-bottom: 10px;
+}
+
+.waiting-time {
+  font-size: 100px;
+  height: 100vh;
+  width: 100vw;
+  border: 1px solid black;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #808080bf;
+  font-family: "Open Sans", sans-serif;
+  color: #beebe9;
+  -webkit-animation: fadein 2s;
+}
+
+.race-component {
+    height: 30%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+}
+
+.paragraph {
+    font-family: Arial, serif;
+    font-size: 25px;
 }

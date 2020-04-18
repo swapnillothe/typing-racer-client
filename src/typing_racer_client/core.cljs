@@ -9,7 +9,7 @@
 
 (def host "localhost")
 
-(def waiting-time (r/atom 3))
+(def waiting-time (r/atom 10))
 
 (def port 9002)
 
@@ -73,7 +73,7 @@
 			    :onChange #(reset! side-effect-atom (.-value (.-target %)))} props)]))
 
 (defn waiting-time-component []
-    [:div (str "Wait for : " @waiting-time " Secs")])
+  [:div {:class ["waiting-time"]} @waiting-time])
 
 (defn append-word [typed word]
   (let [words (str/split typed #" " -1)
@@ -133,40 +133,42 @@
 (defn paragraph [para]
   (let [sorted-out-words (sort-out-words para (append-word @typed-words @current-typed))]
     [:div
+	{:class ["paragraph"]}
 	[:span {:class "typed"} (:correct sorted-out-words)]
 	[:span {:class "wrong"} (:wrong sorted-out-words)]
-	[:span {:class "paragraph"} (:remaining sorted-out-words)]]))
+	[:span {:class "remaining"} (:remaining sorted-out-words)]]))
 
 (defn result-component []
   (let [results (r/atom [])]
     (fn [] (r/create-class
 		   {:component-did-mount
 		    (fn []
-			 (println "Component mounted!!!")
 			 (js/setInterval
 			   (fn []
-				(go
-				  (reset! results (parse-body (<! (request :get (str "/result?race-id=" @race-id)))))))
+				(go (reset! results (parse-body (<! (request :get (str "/result?race-id=" @race-id)))))))
 			   1000))
 		    :reagent-render
-		    (fn [] [:div
-				  {:class ["results"] :id "results"}
-				  (map
-				    (fn [player-details]
-					 [:div
-					  {:class ["result"]}
-					  [:span {:class ["name"]} (player-details :name)]
-					  [:span {:class ["speed"]} (player-details :speed)]])
-				    @results)])}))))
+		    (fn []
+			 (go (reset! results (parse-body (<! (request :get (str "/result?race-id=" @race-id))))))
+			 [:div
+			  {:class ["results"] :id "results"}
+			  (map
+			    (fn [player-details]
+				 [:div
+				  {:class ["result"]}
+				  [:span {:class ["name"]} (player-details :name)]
+				  [:span {:class ["speed"]} (player-details :speed)]])
+			    @results)])}))))
 
 (defn race-component
   [para]
   [:div
-   (when (not (zero? @waiting-time))
-	[waiting-time-component])
+   {:class ["race-component"]}
    [paragraph para]
    [typing-area para]
-   [result-component]])
+   [result-component]
+   (when (not (zero? @waiting-time))
+	[waiting-time-component])])
 
 (defn initiate-race [race-id]
   (go (let [body (parse-body (<! (request :get (str "/race?race-id=" race-id))))
@@ -197,8 +199,6 @@
   (async/go (let [response (async/<! (request :post (str "/host?host=" host "&&number-of-players=" no-of-players)))
 			   player-id ((parse-body response) :player-id)
 			   race-id ((parse-body response) :race-id)]
-		    (set-cookie (str "player-id=" player-id))
-		    (set-cookie (str "race-id=" race-id))
 		    (set-player-id player-id)
 		    (set-race-id race-id)
 		    (waiting-page race-id)
